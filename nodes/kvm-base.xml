@@ -1,0 +1,139 @@
+<?xml version="1.0" standalone="no"?>
+
+<kickstart>
+
+
+<description>
+</description>
+
+
+<copyright>
+Copyright (c) 2000 - 2007 The Regents of the University of California.
+All rights reserved. Rocks(tm) v4.3 www.rocksclusters.org
+</copyright>
+
+
+<changelog>
+</changelog>
+
+
+<!-- <package>xen</package>
+<package>kernel-xen</package>
+<package>kernel-xen-devel</package>  -->
+<package>qemu-kvm</package>
+<package>libvirt</package>
+
+<!-- no necessary but usefull -->
+<package>qemu-kvm-tools</package>
+<package>virt-v2v</package>
+<package>virt-manager</package>
+
+
+<package>rocks-boot-xen</package>
+<package>rocks-pygrub</package>
+<package>gnutls-utils</package>
+
+
+
+
+<post>
+<!-- increase the max number of virtual interfaces that can be created -->
+
+<file name="/etc/modprobe.conf" mode="append">
+options netloop nloopbacks=32
+</file>
+
+</post>
+
+
+<post>
+
+
+<file name="/etc/sysctl.conf" mode="append">
+#https://bugzilla.redhat.com/show_bug.cgi?id=512206
+net.bridge.bridge-nf-call-ip6tables = 0
+net.bridge.bridge-nf-call-iptables = 0
+net.bridge.bridge-nf-call-arptables = 0
+</file>
+
+</post>
+
+
+<!-- set up access to libvirt -->
+
+<post>
+
+<file name="/etc/sysconfig/libvirtd">
+LIBVIRTD_ARGS="--listen"
+</file>
+
+</post>
+
+<post>
+
+<!-- create a client cert -->
+
+mkdir -p /etc/pki/libvirt/private
+
+<!-- speed up certtool -->
+mv /dev/random /dev/random.orig
+ln -s /dev/urandom /dev/random
+
+
+/usr/bin/certtool --generate-privkey > /etc/pki/libvirt/private/clientkey.pem
+
+<file name="/tmp/client.info">
+organization = &Info_CertificateOrganization;
+cn = &hostname;
+expiration_days = 3650
+tls_www_client
+encryption_key
+signing_key
+</file>
+
+/usr/bin/certtool --generate-certificate \
+	--load-privkey /etc/pki/libvirt/private/clientkey.pem \
+	--load-ca-certificate /etc/pki/CA/cacert.pem \
+	--load-ca-privkey /tmp/cakey.pem \
+	--template /tmp/client.info --outfile /etc/pki/libvirt/clientcert.pem
+
+
+/bin/rm -f /tmp/client.info
+
+</post>
+
+
+<post>
+
+<!-- now create a server cert -->
+
+/usr/bin/certtool --generate-privkey > /etc/pki/libvirt/private/serverkey.pem
+
+<file name="/tmp/server.info">
+organization = &Info_CertificateOrganization;
+cn = &hostname;
+expiration_days = 3650
+tls_www_server
+encryption_key
+signing_key
+</file>
+
+/usr/bin/certtool --generate-certificate \
+	--load-privkey /etc/pki/libvirt/private/serverkey.pem \
+	--load-ca-certificate /etc/pki/CA/cacert.pem \
+	--load-ca-privkey /tmp/cakey.pem \
+	--template /tmp/server.info --outfile /etc/pki/libvirt/servercert.pem
+
+/bin/rm -f /tmp/server.info
+/bin/rm -f /tmp/cakey.pem
+
+
+<!-- restore original system -->
+rm /dev/random
+mv /dev/random.orig /dev/random
+
+</post>
+
+
+</kickstart>
+

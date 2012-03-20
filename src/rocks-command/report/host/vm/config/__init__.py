@@ -1,4 +1,4 @@
-# $Id: __init__.py,v 1.1 2012/03/17 02:52:30 clem Exp $
+# $Id: __init__.py,v 1.2 2012/03/20 21:47:45 clem Exp $
 #
 # @Copyright@
 # 
@@ -54,6 +54,9 @@
 # @Copyright@
 #
 # $Log: __init__.py,v $
+# Revision 1.2  2012/03/20 21:47:45  clem
+# first attemot to support virtual frontend installation
+#
 # Revision 1.1  2012/03/17 02:52:30  clem
 # I needed to commit all this code! First version of the rocks command for kvm.
 # Soon all the other code
@@ -108,6 +111,33 @@ class Command(rocks.commands.report.host.command):
 
 	"""
 
+        def getBootProfile(self, host, profile):
+                """Return what's defined by the named profile, Return
+                        string versions, empty strings if DB has Null entries"""
+
+                kernel = ''
+                ramdisk =  ''
+                bootargs = ''
+                if not profile:
+                        return kernel, ramdisk, bootargs
+
+                # Read the profile
+                rows = self.db.execute("""select kernel, ramdisk, args
+                        from bootaction where action = '%s' """ % profile)
+                if rows > 0:
+                        kernel, ramdisk, bootargs = self.db.fetchone()
+
+                if not kernel:
+                        kernel = ''
+                if not ramdisk:
+                        ramdisk = ''
+                if not bootargs:
+                        bootargs = ''
+
+                return kernel, ramdisk, bootargs
+
+
+
 	def getBridgeDevName(self, host, subnetid, vlanid):
 		returnDeviceName = None
 
@@ -149,15 +179,74 @@ class Command(rocks.commands.report.host.command):
 		return returnDeviceName
 
 	def reportBootLoader(self,host,xmlconfig,virtType):
-		#not needed anymore
-		#TODO remove this function
+		"""first section of the libvirt xml with the startup params"""
 		xmlconfig.append("<domain type='kvm'>")
 		xmlconfig.append("<name>%s</name>" % host)
 		xmlconfig.append("<os>")
-		xmlconfig.append("<type>hvm</type>")
-		xmlconfig.append("<boot dev='network'/>")
-		xmlconfig.append("<boot dev='hd'/>")
-		xmlconfig.append("<bootmenu enable='yes'/>")
+		xmlconfig.append("  <type>hvm</type>")
+
+		#let's see how we boot this VM
+		runAction = None
+		installAction = None
+		rows = self.db.execute("""select runaction, installaction
+			from nodes where name = '%s' """ % host)
+		if rows > 0:
+			(runAction, installAction) = self.db.fetchone()
+		if installAction == "install vm frontend":
+			#frontend installation we need to provide 
+			#1. anaconda kernel and ramdisk
+			#2. network info to fetch stage2 from http server
+			# Read the profile
+			kernel, ramdisk, bootargs = ('', '', '')
+			rows = self.db.execute("""select kernel, ramdisk, args
+					from bootaction where action = '%s' """ % installAction)
+			if rows > 0:
+				kernel, ramdisk, bootargs = self.db.fetchone()
+
+			ip = None
+			netmask = None
+			dns = None
+			gateway = None
+			if host in self.getHostnames( [ 'frontend' ]):
+				subnet = 'public'
+				rows = self.db.execute("""select net.ip, s.netmask from
+				        networks net,
+				        nodes n, subnets s where n.name='%s' and
+				        n.id = net.node and net.subnet = s.id and
+				        s.name = '%s' """ % (host, subnet))
+				
+				if rows > 0:
+					(ip, netmask) = self.db.fetchone()
+				
+				dns = self.db.getHostAttr(host,
+					'Kickstart_PublicDNSServers')
+				
+				for (key, val) in self.db.getHostRoutes(host).items():
+					if key == '0.0.0.0' and val[0] == '0.0.0.0':
+						gateway = val[1]
+			
+			if ip:
+				bootargs += ' ip=%s ' % ip
+			if netmask:
+				bootargs += ' netmask=%s ' % netmask
+			if dns:
+			        #
+			        # the user can enter in multiple DNS servers that are
+			        # separated by a comma. we can only supply one DNS
+			        # to anaconda, so let's just select the first one.
+			        #
+			        bootargs += ' dns=%s ' % dns.split(',')[0]
+			if gateway:
+			        bootargs += ' gateway=%s ' % gateway
+			
+			xmlconfig.append("  <kernel>%s</kernel>" % kernel )
+			xmlconfig.append("  <initrd>%s</initrd>" % ramdisk )
+			xmlconfig.append("  <cmdline>%s</cmdline>" % bootargs )
+		else:
+			#we boot the machine as if normal hardware
+			xmlconfig.append("  <boot dev='network'/>")
+			xmlconfig.append("  <boot dev='hd'/>")
+			xmlconfig.append("  <bootmenu enable='yes'/>")
 		xmlconfig.append("</os>")
 
 

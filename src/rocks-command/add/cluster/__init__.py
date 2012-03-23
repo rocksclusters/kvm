@@ -1,4 +1,4 @@
-# $Id: __init__.py,v 1.1 2012/03/17 02:52:29 clem Exp $
+# $Id: __init__.py,v 1.2 2012/03/23 01:26:38 clem Exp $
 # 
 # @Copyright@
 # 
@@ -54,6 +54,9 @@
 # @Copyright@
 #
 # $Log: __init__.py,v $
+# Revision 1.2  2012/03/23 01:26:38  clem
+# only hvm is supported at the moment
+#
 # Revision 1.1  2012/03/17 02:52:29  clem
 # I needed to commit all this code! First version of the rocks command for kvm.
 # Soon all the other code
@@ -457,15 +460,16 @@ class Command(rocks.commands.add.command):
 				('vlan', None),
 				('subnet', 'private'),
 				('gateway', None),
-				('virt-type','para'),
+				('virt-type','hvm'),
 				('fe-name',None),
 				('fe-container',self.getFrontend())
 				])
 
 		
 		virtType=virtType.lower()
-		if virtType != 'para' and virtType != 'hvm':
-			self.abort("Virtualization type must be either 'para' or 'hvm'")
+		if virtType != 'hvm':
+			self.abort("KVM support only 'hvm' virtualization")
+		
 
 		if vlan:
 			try:

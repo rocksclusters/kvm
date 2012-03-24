@@ -1,5 +1,5 @@
 #
-# $Id: Makefile,v 1.1 2012/03/17 02:52:28 clem Exp $
+# $Id: Makefile,v 1.2 2012/03/24 02:40:47 clem Exp $
 #
 # @Copyright@
 # 
@@ -53,35 +53,6 @@
 # IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 # 
 # @Copyright@
-#
-# $Log: Makefile,v $
-# Revision 1.1  2012/03/17 02:52:28  clem
-# I needed to commit all this code! First version of the rocks command for kvm.
-# Soon all the other code
-#
-# Revision 1.8  2012/03/17 02:42:01  clem
-# Added a vmconstant.py to keep some constant usefull in kvm
-#
-# Revision 1.7  2011/07/23 02:31:43  phil
-# Viper Copyright
-#
-# Revision 1.6  2010/09/07 23:53:32  bruno
-# star power for gb
-#
-# Revision 1.5  2010/06/29 00:25:41  bruno
-# a little code restructuring and now the console can handle reboots
-#
-# Revision 1.4  2009/05/01 19:07:33  mjk
-# chimi con queso
-#
-# Revision 1.3  2008/10/18 00:56:22  mjk
-# copyright 5.1
-#
-# Revision 1.2  2008/03/06 23:42:04  mjk
-# copyright storm on
-#
-# Revision 1.1  2007/12/03 19:48:51  bruno
-# xen for V
 #
 #
 

@@ -1,4 +1,4 @@
-# $Id: __init__.py,v 1.2 2012/03/23 01:26:38 clem Exp $
+# $Id: __init__.py,v 1.3 2012/03/24 02:40:47 clem Exp $
 # 
 # @Copyright@
 # 
@@ -54,6 +54,11 @@
 # @Copyright@
 #
 # $Log: __init__.py,v $
+# Revision 1.3  2012/03/24 02:40:47  clem
+# New virtio driver for disk network
+# New fixed version of the start up boot options
+# New networking with bridges on every physical dev
+#
 # Revision 1.2  2012/03/23 01:26:38  clem
 # only hvm is supported at the moment
 #
@@ -359,13 +364,11 @@ class Command(rocks.commands.add.command):
 		if virtType == 'hvm' :
 			self.command('set.host.runaction', [ self.frontendname,
 				'os' ] )
-			self.command('set.host.installaction', [ self.frontendname,
-				'install frontend' ] )
 		else:
 			self.command('set.host.runaction', [ self.frontendname,
 				'none' ] )
-			self.command('set.host.installaction', [ self.frontendname,
-				'install vm frontend' ] )
+		self.command('set.host.installaction', [ self.frontendname,
+			'install vm frontend' ] )
 
 		#
 		# set the default boot action to be 'install'

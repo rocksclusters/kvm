@@ -1,4 +1,4 @@
-# $Id: __init__.py,v 1.2 2012/03/20 21:47:45 clem Exp $
+# $Id: __init__.py,v 1.3 2012/03/24 02:40:47 clem Exp $
 #
 # @Copyright@
 # 
@@ -53,30 +53,6 @@
 # 
 # @Copyright@
 #
-# $Log: __init__.py,v $
-# Revision 1.2  2012/03/20 21:47:45  clem
-# first attemot to support virtual frontend installation
-#
-# Revision 1.1  2012/03/17 02:52:30  clem
-# I needed to commit all this code! First version of the rocks command for kvm.
-# Soon all the other code
-#
-# Revision 1.4  2011/08/18 00:58:19  anoop
-# Minor cleanup.
-# Re-up the Release number
-#
-# Revision 1.3  2011/07/23 02:31:44  phil
-# Viper Copyright
-#
-# Revision 1.2  2011/07/18 20:21:34  phil
-# Give some diagnostics when creating a cluster.
-# Support HVM_Features attribute to turn on/off services.
-#
-# Revision 1.1  2011/02/14 04:19:14  phil
-# Now support HVM as well as paravirtual instances.
-# Preliminary testing on 64bit complete.
-#
-#
 
 import os
 import tempfile
@@ -88,14 +64,6 @@ sys.path.append('/usr/lib64/python2.' + str(sys.version_info[1]) + '/site-packag
 sys.path.append('/usr/lib/python2.' + str(sys.version_info[1]) + '/site-packages')
 import libvirt
 
-#
-# this function is used to suppress an error message when we start a VM
-# for the very first time and there isn't a disk file created for it yet.
-# the error message looks like:
-#
-#	libvir: Xen Daemon error : POST operation failed: (xend.err "Error
-#	creating domain: Disk isn't accessible)"
-#
 class Command(rocks.commands.report.host.command):
 	"""
 	Reports the XML Configuration for VM that will be handed
@@ -185,6 +153,17 @@ class Command(rocks.commands.report.host.command):
 		xmlconfig.append("<os>")
 		xmlconfig.append("  <type>hvm</type>")
 
+		print "host is ", host
+                #let's check out the boot action
+		nrows = self.db.execute("""select b.action from boot b , nodes n where
+			b.node = n.id and n.name = "%s" """ % (host))
+		if nrows < 1:
+			#that's bad!
+			self.abort('Host ' + host + ' doesn\'t have a boot action...')
+		else:
+			action, = self.db.fetchone()
+
+
 		#let's see how we boot this VM
 		runAction = None
 		installAction = None
@@ -192,8 +171,14 @@ class Command(rocks.commands.report.host.command):
 			from nodes where name = '%s' """ % host)
 		if rows > 0:
 			(runAction, installAction) = self.db.fetchone()
+		if action == 'os':
+			#we boot the machine as if normal hardware
+			xmlconfig.append("  <boot dev='network'/>")
+			xmlconfig.append("  <boot dev='hd'/>")
+			xmlconfig.append("  <bootmenu enable='yes'/>")
 		if installAction == "install vm frontend":
-			#frontend installation we need to provide 
+			#action == 'install' and installAction == install vm fronend
+			#aka we are installing a frontend
 			#1. anaconda kernel and ramdisk
 			#2. network info to fetch stage2 from http server
 			# Read the profile
@@ -242,11 +227,6 @@ class Command(rocks.commands.report.host.command):
 			xmlconfig.append("  <kernel>%s</kernel>" % kernel )
 			xmlconfig.append("  <initrd>%s</initrd>" % ramdisk )
 			xmlconfig.append("  <cmdline>%s</cmdline>" % bootargs )
-		else:
-			#we boot the machine as if normal hardware
-			xmlconfig.append("  <boot dev='network'/>")
-			xmlconfig.append("  <boot dev='hd'/>")
-			xmlconfig.append("  <bootmenu enable='yes'/>")
 		xmlconfig.append("</os>")
 
 
@@ -312,12 +292,13 @@ class Command(rocks.commands.report.host.command):
 		for mac, subnetid, vlanid in macs:
 			# allow VMs to have virtual and VLAN interfaces
 			if mac is not None:
-				xmlconfig.append("  <interface type='direct'>")
+				xmlconfig.append("  <interface type='bridge'>")
+				#xmlconfig.append("  <interface type='direct'>")
 				dev = self.getBridgeDevName(physhost, subnetid, vlanid)
-				xmlconfig.append("    <source dev='%s' mode='bridge'/>" % dev )
+				xmlconfig.append("    <source bridge='%s'/>" % dev )
+				#xmlconfig.append("    <source dev='%s' mode='bridge'/>" % dev )
 				xmlconfig.append("    <mac address='%s'/>" % mac)
-				#TODO
-				#xmlconfig.append("    <model type='virtio' />")
+				xmlconfig.append("    <model type='virtio' />")
 				xmlconfig.append("  </interface>")
 				index += 1
 
@@ -356,7 +337,7 @@ class Command(rocks.commands.report.host.command):
 				a = "<source file='%s'/>" % file
 				xmlconfig.append(a)
 
-				a = "<target dev='%s'/>" % device
+				a = "<target dev='%s' bus='virtio'/>" % device
 				#TODO add virtio for performance
 				#<target dev='vda' bus='virtio'/>
 				xmlconfig.append(a)
@@ -371,7 +352,7 @@ class Command(rocks.commands.report.host.command):
 				a = "<source dev='/dev/%s'/>" % name
 				xmlconfig.append(a)
 
-				a = "<target dev='%s'/>" % device
+				a = "<target dev='%s' bus='virtio'/>" % device
                                 #TODO add virtio for performance
                                 #<target dev='vda' bus='virtio'/>
 				xmlconfig.append(a)

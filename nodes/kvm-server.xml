@@ -1,0 +1,194 @@
+<?xml version="1.0" standalone="no"?>
+
+<kickstart>
+
+
+<description>
+Kvm support for the frontend Machine.
+</description>
+
+
+<copyright>
+Copyright (c) 2000 - 2007 The Regents of the University of California.
+All rights reserved. Rocks(tm) v4.3 www.rocksclusters.org
+</copyright>
+
+
+<changelog>
+</changelog>
+
+
+<package>roll-kvm-usersguide</package>
+<package>rocks-command-kvm</package>
+<package>rocks-airboss</package>
+
+
+<post>
+
+
+</post>
+
+
+<post interpreter="/opt/rocks/bin/python">
+<![CDATA[
+#
+# calculate the VM MAC base address
+#
+import os
+
+]]>
+a = '&Kickstart_PublicAddress;'
+<![CDATA[
+
+ip_octets = []
+
+#
+# toss the first octect
+#
+for i in a.split('.')[1:]:
+	ip_octets.append(int(i))
+
+#
+# now reverse the octects. this puts the most unique part of the IP address
+# in the most significant octect of the MAC address. this will be useful
+# if multiple clusters in the same organization have more than 16,777,216
+# VMs.
+#
+ip_octets.reverse()
+
+#
+# save the last two bits of the first octet
+#
+locally_administered_bit = 0x2
+multicast_bit = 0x1
+
+last_two = ip_octets[0] & (locally_administered_bit | multicast_bit)
+
+#
+# turn off the locally administered bit and multicast bit
+#
+p = ip_octets[0] & ~(locally_administered_bit | multicast_bit)
+
+#
+# set the locally administered bit
+#
+p |= locally_administered_bit
+
+prefix = []
+prefix.append('%x' % p)
+
+#
+# now set the next 2 octets
+#
+for a in range(1, 3):
+	prefix.append('%x' % ip_octets[a])
+
+#
+# the 4th octet is also a special case. it is the last two bits of the first
+# octet
+#
+prefix.append('%x' % (last_two << 6))
+
+#
+# the fifth and sixth octet are 00
+#
+prefix.append('00')
+prefix.append('00')
+
+vm_mac_base_addr = ':'.join(prefix)
+os.system('/opt/rocks/bin/rocks set attr vm_mac_base_addr %s' % \
+	(vm_mac_base_addr))
+]]>
+</post>
+
+<post>
+/opt/rocks/bin/rocks set attr vm_mac_base_addr_mask ff:ff:ff:c0:00:00
+</post>
+
+
+<post>
+
+<!--
+	make a CA for creating certificates in order to securely talk to 
+	remote libvirtd processes
+-->
+
+mkdir -p /etc/pki/CA/private
+
+<!-- speed up certtool -->
+mv /dev/random /dev/random.orig
+ln -s /dev/urandom /dev/random
+
+if [ ! -f /etc/pki/CA/private/cakey.pem ]
+then
+	/usr/bin/certtool --generate-privkey > /etc/pki/CA/private/cakey.pem
+fi
+
+<file name="/tmp/ca.info">
+cn = &Info_CertificateOrganization;
+expiration_days = 3650
+ca
+cert_signing_key
+</file>
+
+if [ ! -f /etc/pki/CA/cacert.pem ]
+then
+	/usr/bin/certtool --generate-self-signed \
+		--load-privkey /etc/pki/CA/private/cakey.pem \
+		--template /tmp/ca.info --outfile /etc/pki/CA/cacert.pem
+fi
+
+/bin/rm -f /tmp/ca.info
+
+<!-- make sure apache can read the CA files -->
+
+chmod 750 /etc/pki/CA
+chown root.apache /etc/pki/CA
+chmod 750 /etc/pki/CA/private
+chown root.apache /etc/pki/CA/private
+chmod 440 /etc/pki/CA/private/cakey.pem
+chown root.apache /etc/pki/CA/private/cakey.pem
+
+
+<!-- restore original system -->
+rm /dev/random
+mv /dev/random.orig /dev/random
+
+</post>
+
+<post>
+
+<!-- set up a temp CA key for the common cert creations in xen-base -->
+cp /etc/pki/CA/private/cakey.pem /tmp/cakey.pem
+
+</post>
+
+<post>
+<!-- turn on the service that allows users to control their VMs -->
+
+/sbin/chkconfig --add rocks-airboss
+</post>
+
+<post>
+
+/opt/rocks/bin/rocks add host firewall localhost network=all service="8677" \
+	protocol="tcp" action="REJECT" chain="INPUT" \
+	comment="block airboss traffic from non-private interfaces" \
+	rulename="R100-AIRBOSS" rulesrc="system"
+
+</post>
+
+
+<post>
+
+<!-- save the CA key and CA certificate on the restore roll -->
+
+<file name="/export/site-roll/rocks/src/roll/restore/xen-restore.mk">
+FILES	+= /etc/pki/CA/private/cakey.pem
+FILES	+= /etc/pki/CA/cacert.pem
+</file>
+
+</post>
+
+</kickstart>
+

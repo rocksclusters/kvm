@@ -1,0 +1,67 @@
+<?xml version="1.0" standalone="no"?>
+
+<graph>
+
+	<description>
+
+	The KVM Roll
+
+	</description>
+
+	<copyright>
+	Copyright (c) 2000 - 2011 The Regents of the University of California.
+	All rights reserved. Rocks(r) v5.5 www.rocksclusters.org
+	
+	</copyright>
+
+<changelog>
+
+</changelog>
+
+
+	<order head="database-data">
+		<tail>xen-db</tail>
+	</order> 
+
+	<order head="xen-db">
+		<tail>pxe</tail>
+	</order> 
+
+	<order head="pxe">
+		<tail>xen-server-db-data</tail>
+	</order> 
+
+	<order head="xen-server-db-data">
+		<tail>xen-base</tail>
+	</order> 
+
+	<order head="networking-server">
+		<tail>xen-server</tail>
+	</order>
+
+	<order head="restore-user-files">
+		<tail>xen-server</tail>
+	</order>
+
+	<order head="xen-server">
+		<tail>xen-base</tail>
+	</order>
+
+	<order head="xen-client">
+		<tail>xen-base</tail>
+	</order>
+
+
+	<edge from="server">
+		<to>xen-server</to>
+		<to>xen-server-db-data</to>
+		<to>xen-db</to>
+		<to>xen-base</to>
+	</edge>
+
+	<edge from="client" cond="xen">
+		<to>xen-base</to>
+	</edge>
+
+</graph>
+

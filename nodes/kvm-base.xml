@@ -17,9 +17,6 @@ All rights reserved. Rocks(tm) v4.3 www.rocksclusters.org
 </changelog>
 
 
-<!-- <package>xen</package>
-<package>kernel-xen</package>
-<package>kernel-xen-devel</package>  -->
 <package>qemu-kvm</package>
 <package>libvirt</package>
 
@@ -28,8 +25,6 @@ All rights reserved. Rocks(tm) v4.3 www.rocksclusters.org
 <package>virt-v2v</package>
 <package>virt-manager</package>
 
-
-<package>rocks-boot-xen</package>
 <package>rocks-pygrub</package>
 <package>gnutls-utils</package>
 

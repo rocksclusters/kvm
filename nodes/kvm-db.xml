@@ -1,0 +1,58 @@
+<?xml version="1.0" standalone="no"?>
+
+<kickstart>
+
+
+<description>
+Kvm database tables
+</description>
+
+
+<copyright>
+Copyright (c) 2000 - 2007 The Regents of the University of California.
+All rights reserved. Rocks(tm) v4.3 www.rocksclusters.org
+</copyright>
+
+
+<changelog>
+</changelog>
+
+
+<post>
+
+<file name="/tmp/xen-tables.sql">
+
+DROP TABLE IF EXISTS vm_nodes;
+CREATE TABLE vm_nodes (
+	ID		int(11) NOT NULL auto_increment,
+	PhysNode	int(11) NOT NULL default '0',
+	Node		int(11) NOT NULL default '0',
+	Mem		int(11) NOT NULL default '1024',
+	Slice		int(11) NOT NULL default '0',
+	Virt_Type	varchar(64) default NULL,
+	PRIMARY KEY (ID)
+) TYPE=MyISAM;
+
+DROP TABLE IF EXISTS vm_disks;
+CREATE TABLE vm_disks (
+	ID		int(11) NOT NULL auto_increment,
+	Vm_Node		int(11) NOT NULL default '0',
+	VBD_Type	varchar(64) default NULL,
+	Prefix		varchar(512) default NULL,
+	Name		varchar(512) default NULL,
+	Device		varchar(512) default NULL,
+	Mode		varchar(64) default NULL,
+	Size		int(11) NOT NULL default '0',
+	PRIMARY KEY (ID)
+) TYPE=MyISAM;
+
+</file>
+
+/opt/rocks/bin/mysql --defaults-extra-file=/root/.rocks.my.cnf \
+	--user=root cluster &lt; /tmp/xen-tables.sql
+
+/opt/rocks/sbin/rocks-db-perms
+</post>
+
+</kickstart>
+

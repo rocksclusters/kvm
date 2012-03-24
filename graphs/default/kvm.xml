@@ -20,47 +20,47 @@
 
 
 	<order head="database-data">
-		<tail>xen-db</tail>
+		<tail>kvm-db</tail>
 	</order> 
 
-	<order head="xen-db">
+	<order head="kvm-db">
 		<tail>pxe</tail>
 	</order> 
 
 	<order head="pxe">
-		<tail>xen-server-db-data</tail>
+		<tail>kvm-server-db-data</tail>
 	</order> 
 
-	<order head="xen-server-db-data">
-		<tail>xen-base</tail>
+	<order head="kvm-server-db-data">
+		<tail>kvm-base</tail>
 	</order> 
 
 	<order head="networking-server">
-		<tail>xen-server</tail>
+		<tail>kvm-server</tail>
 	</order>
 
 	<order head="restore-user-files">
-		<tail>xen-server</tail>
+		<tail>kvm-server</tail>
 	</order>
 
-	<order head="xen-server">
-		<tail>xen-base</tail>
+	<order head="kvm-server">
+		<tail>kvm-base</tail>
 	</order>
 
-	<order head="xen-client">
-		<tail>xen-base</tail>
+	<order head="kvm-client">
+		<tail>kvm-base</tail>
 	</order>
 
 
 	<edge from="server">
-		<to>xen-server</to>
-		<to>xen-server-db-data</to>
-		<to>xen-db</to>
-		<to>xen-base</to>
+		<to>kvm-server</to>
+		<to>kvm-server-db-data</to>
+		<to>kvm-db</to>
+		<to>kvm-base</to>
 	</edge>
 
-	<edge from="client" cond="xen">
-		<to>xen-base</to>
+	<edge from="client" cond="kvm">
+		<to>kvm-base</to>
 	</edge>
 
 </graph>

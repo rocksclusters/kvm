@@ -61,6 +61,7 @@
 
 	<edge from="client" cond="kvm">
 		<to>kvm-base</to>
+		<to>kvm-client</to>
 	</edge>
 
 </graph>

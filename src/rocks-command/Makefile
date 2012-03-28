@@ -1,5 +1,5 @@
 #
-# $Id: Makefile,v 1.2 2012/03/24 02:40:47 clem Exp $
+# $Id: Makefile,v 1.3 2012/03/28 18:43:55 clem Exp $
 #
 # @Copyright@
 # 
@@ -66,9 +66,11 @@ build:
 
 install::
 	mkdir -p $(ROOT)/$(PY.ROCKS)/rocks/commands/
+	mkdir -p $(ROOT)/$(PKGROOT)/bin
 	find ./*/ -name "*.py" | \
 		cpio -pduv $(ROOT)/$(PY.ROCKS)/rocks/commands/
 	install -m444 vmconstant.py $(ROOT)/$(PY.ROCKS)/rocks/
+	install -m444 rocks-create-vm-disks $(ROOT)/$(PKGROOT)/bin
 	find $(ROOT)/$(PY.ROCKS)/rocks/commands -name "*.py" | awk \
 		'{ print "\nRollName = \"$(ROLL)\"" >> $$1; }'
 	find $(ROOT) -type d -exec chmod a+rx {} \;

@@ -1,0 +1,202 @@
+#!/opt/rocks/bin/python
+#
+# This is program is used to create disks for VMs. It serves as a helper
+# program to rocks-pygrub.
+#
+# @Copyright@
+# 
+# 				Rocks(r)
+# 		         www.rocksclusters.org
+# 		         version 5.4.3 (Viper)
+# 
+# Copyright (c) 2000 - 2011 The Regents of the University of California.
+# All rights reserved.	
+# 
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are
+# met:
+# 
+# 1. Redistributions of source code must retain the above copyright
+# notice, this list of conditions and the following disclaimer.
+# 
+# 2. Redistributions in binary form must reproduce the above copyright
+# notice unmodified and in its entirety, this list of conditions and the
+# following disclaimer in the documentation and/or other materials provided 
+# with the distribution.
+# 
+# 3. All advertising and press materials, printed or electronic, mentioning
+# features or use of this software must display the following acknowledgement: 
+# 
+# 	"This product includes software developed by the Rocks(r)
+# 	Development Team at the San Diego Supercomputer Center at the
+# 	University of California, San Diego and its contributors."
+# 
+# 4. Except as permitted for the purposes of acknowledgment in paragraph 3,
+# neither the name or logo of this software nor the names of its
+# authors may be used to endorse or promote products derived from this
+# software without specific prior written permission.  The name of the
+# software includes the following terms, and any derivatives thereof:
+# "Rocks", "Rocks Clusters", and "Avalanche Installer".  For licensing of 
+# the associated name, interested parties should contact Technology 
+# Transfer & Intellectual Property Services, University of California, 
+# San Diego, 9500 Gilman Drive, Mail Code 0910, La Jolla, CA 92093-0910, 
+# Ph: (858) 534-5815, FAX: (858) 534-7345, E-MAIL:invent@ucsd.edu
+# 
+# THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS''
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+# THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+# PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS
+# BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
+# BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+# WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
+# OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
+# IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+# 
+# @Copyright@
+#
+#
+#
+
+import os
+import os.path
+import sys
+import string
+import tempfile
+import urllib
+import getopt
+import pwd
+import rocks.sql
+
+try:
+	opts, args = getopt.gnu_getopt(sys.argv[1:], '',
+		[ "hostname=" ] )
+except getopt.GetoptError:
+	sys.exit(1)
+
+#
+# get the hostname
+#
+hostname = None
+for o, a in opts:
+	if o in ("--hostname",):
+		hostname = a
+
+if hostname == None:
+	print "must supply a host name"
+
+#
+# parameters from the config file that pertain to disks
+#
+vmParameters = { 'disk' : [], 'disksize' : [] }
+
+
+
+# set up DB connection parameters
+username = pwd.getpwuid(os.geteuid())[0]
+passwd = ''
+conf_file = '/root/.rocks.my.cnf'
+
+if username != 'root':
+	print "This command can be run only by root."
+	sys.exit(-1)
+try:
+	file=open(conf_file,'r')
+	for line in file.readlines():
+		l=string.split(line[:-1],'=')
+		if len(l) > 1 and l[0].strip() == "password":
+			passwd = l[1].strip()
+			break
+	file.close()
+except:
+	pass
+try:
+	host = rocks.DatabaseHost
+except:
+	host = 'localhost'
+
+# Now make the connection to the DB
+from MySQLdb import *
+# Connect over UNIX socket if it exists, otherwise go over the
+# network.
+if os.path.exists('/var/opt/rocks/mysql/mysql.sock'):
+	db = connect(db='cluster',
+		host='localhost',
+		user=username,
+		passwd='%s' % passwd,
+		unix_socket='/var/opt/rocks/mysql/mysql.sock')
+else:
+	db = connect(db='cluster',
+		host='%s' % host,
+		user=username,
+		passwd='%s' % passwd,
+		port=40000)
+
+cursor = db.cursor()
+# Connect to the DB
+cursor.execute("""select vd.vbd_type, vd.prefix,
+	vd.name, vd.device, vd.mode, vd.size from
+	vm_disks vd, vm_nodes vn, nodes n where
+	vd.vm_node = vn.id and vn.node = n.id and
+	n.name = '%s' """ % hostname)
+disks = cursor.fetchall()
+if not disks:
+	print "no disks"
+	sys.exit(0)
+
+vmdisks = []
+index = 0
+bootdisk = None
+bootdevice = None
+for vbd_type,prefix,name,device,mode,size in disks:
+	#
+	# if the disk specification is a 'regular' file, then
+	# make sure the file for the disk space exists. if
+	# it doesn't, create a sparse file for the disk space.
+	#
+	file = os.path.join(prefix, name)
+
+	if vbd_type in [ 'file', 'tap:aio' ]:
+		vmParameters['disk'].append(file)
+		vmParameters['disksize'].append(int(size) * 1000 * 1000 * 1000)
+	elif vbd_type == 'phy':
+		vmParameters['disk'].append('/dev/%s' % name)
+		vmParameters['disksize'].append(0)
+
+
+#print "VM params: ", vmParameters
+#sys.exit(0)
+
+#
+# Create the disk file(s), if it doesn't exist
+#
+kvm=False
+try:
+	pwd.getpwnam("qemu")[2]
+	#kvm we need to change ownership
+	kvm=True
+except:
+	pass
+i = 0
+for diskfile in vmParameters['disk']:
+	if not os.path.exists(diskfile):
+		if not os.path.exists(os.path.dirname(diskfile)):
+			os.makedirs(os.path.dirname(diskfile), 0700)
+		if kvm:
+			cmd = "chown qemu " + os.path.dirname(os.path.dirname(diskfile))
+			os.system(cmd)
+			cmd = "chown qemu " + os.path.dirname(diskfile)
+			os.system(cmd)
+
+		cmd = 'dd if=/dev/zero of=%s bs=1 count=1 ' % diskfile
+		cmd += 'seek=%d ' % (vmParameters['disksize'][i] - 1)
+		cmd += '> /dev/null 2>&1'
+		os.system(cmd)
+		if kvm:
+			#qemu system we need to change file ownership
+			cmd = "chown qemu:qemu " + str(diskfile)
+			os.system(cmd)
+
+	i += 1
+

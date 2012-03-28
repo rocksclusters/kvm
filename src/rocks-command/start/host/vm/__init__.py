@@ -1,4 +1,4 @@
-# $Id: __init__.py,v 1.1 2012/03/17 02:52:31 clem Exp $
+# $Id: __init__.py,v 1.2 2012/03/28 18:31:19 clem Exp $
 #
 # @Copyright@
 # 
@@ -54,6 +54,9 @@
 # @Copyright@
 #
 # $Log: __init__.py,v $
+# Revision 1.2  2012/03/28 18:31:19  clem
+# removing pygrub configuration file generation code
+#
 # Revision 1.1  2012/03/17 02:52:31  clem
 # I needed to commit all this code! First version of the rocks command for kvm.
 # Soon all the other code
@@ -211,8 +214,7 @@ class Command(rocks.commands.start.host.command):
 
 		try:
 			hipervisor.createLinux(xmlconfig, 0)
-			if virtType != 'hvm' :
-				self.command('set.host.boot',[ host, "action=os" ])
+			self.command('set.host.boot',[ host, "action=os" ])
 
 		except libvirt.libvirtError, m:
 			str = '%s' % m
@@ -270,17 +272,6 @@ class Command(rocks.commands.start.host.command):
 				physhost, = self.db.fetchone()
 			else:
 				continue
-
-			#
-			# create the configuration file
-			#
-			temp = tempfile.mktemp()
-			fout = open(temp, 'w')
-			fout.write(self.command('report.host.vm', [ host ]))
-			fout.close()
-			os.system('scp -q %s %s:/etc/xen/rocks/%s' % 
-				(temp, physhost, host))
-			os.unlink(temp)
 
 			#
 			# get the VM configuration (in XML format for libvirt)

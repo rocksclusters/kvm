@@ -1,4 +1,4 @@
-# $Id: __init__.py,v 1.3 2012/03/24 02:40:47 clem Exp $
+# $Id: __init__.py,v 1.4 2012/03/31 01:07:28 clem Exp $
 #
 # @Copyright@
 # 
@@ -153,7 +153,7 @@ class Command(rocks.commands.report.host.command):
 		xmlconfig.append("<os>")
 		xmlconfig.append("  <type>hvm</type>")
 
-		print "host is ", host
+		#print "host is ", host
                 #let's check out the boot action
 		nrows = self.db.execute("""select b.action from boot b , nodes n where
 			b.node = n.id and n.name = "%s" """ % (host))
@@ -171,12 +171,7 @@ class Command(rocks.commands.report.host.command):
 			from nodes where name = '%s' """ % host)
 		if rows > 0:
 			(runAction, installAction) = self.db.fetchone()
-		if action == 'os':
-			#we boot the machine as if normal hardware
-			xmlconfig.append("  <boot dev='network'/>")
-			xmlconfig.append("  <boot dev='hd'/>")
-			xmlconfig.append("  <bootmenu enable='yes'/>")
-		if installAction == "install vm frontend":
+		if installAction == "install vm frontend" and action == 'install':
 			#action == 'install' and installAction == install vm fronend
 			#aka we are installing a frontend
 			#1. anaconda kernel and ramdisk
@@ -227,6 +222,11 @@ class Command(rocks.commands.report.host.command):
 			xmlconfig.append("  <kernel>%s</kernel>" % kernel )
 			xmlconfig.append("  <initrd>%s</initrd>" % ramdisk )
 			xmlconfig.append("  <cmdline>%s</cmdline>" % bootargs )
+		else:
+			#we boot the machine as if normal hardware
+			xmlconfig.append("  <boot dev='network'/>")
+			xmlconfig.append("  <boot dev='hd'/>")
+			xmlconfig.append("  <bootmenu enable='yes'/>")
 		xmlconfig.append("</os>")
 
 
@@ -292,14 +292,22 @@ class Command(rocks.commands.report.host.command):
 		for mac, subnetid, vlanid in macs:
 			# allow VMs to have virtual and VLAN interfaces
 			if mac is not None:
-				xmlconfig.append("  <interface type='bridge'>")
-				#xmlconfig.append("  <interface type='direct'>")
-				dev = self.getBridgeDevName(physhost, subnetid, vlanid)
-				xmlconfig.append("    <source bridge='%s'/>" % dev )
-				#xmlconfig.append("    <source dev='%s' mode='bridge'/>" % dev )
-				xmlconfig.append("    <mac address='%s'/>" % mac)
-				xmlconfig.append("    <model type='virtio' />")
-				xmlconfig.append("  </interface>")
+				if vlanid :
+					xmlconfig.append("  <interface type='direct'>")
+					dev = self.getBridgeDevName(physhost, subnetid, vlanid)
+					xmlconfig.append("    <source dev='p%s' mode='bridge'/>" % dev )
+					xmlconfig.append("    <mac address='%s'/>" % mac)
+					xmlconfig.append("    <model type='virtio' />")
+					xmlconfig.append("  </interface>")
+				else:
+					xmlconfig.append("  <interface type='bridge'>")
+					#xmlconfig.append("  <interface type='direct'>")
+					dev = self.getBridgeDevName(physhost, subnetid, vlanid)
+					xmlconfig.append("    <source bridge='%s'/>" % dev )
+					#xmlconfig.append("    <source dev='%s' mode='bridge'/>" % dev )
+					xmlconfig.append("    <mac address='%s'/>" % mac)
+					xmlconfig.append("    <model type='virtio' />")
+					xmlconfig.append("  </interface>")
 				index += 1
 
 		#

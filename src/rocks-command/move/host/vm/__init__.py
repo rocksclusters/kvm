@@ -1,4 +1,4 @@
-# $Id: __init__.py,v 1.1 2012/03/17 02:52:29 clem Exp $
+# $Id: __init__.py,v 1.2 2012/03/31 01:07:28 clem Exp $
 #
 # @Copyright@
 # 
@@ -54,6 +54,11 @@
 # @Copyright@
 #
 # $Log: __init__.py,v $
+# Revision 1.2  2012/03/31 01:07:28  clem
+# latest version of the networking for kvm (vlan out of redhat network script)
+# minor fixes here and there to change the disks path from /state/partition1/xen/disks
+# to /state/partition1/kvm/disks
+#
 # Revision 1.1  2012/03/17 02:52:29  clem
 # I needed to commit all this code! First version of the rocks command for kvm.
 # Soon all the other code
@@ -165,7 +170,7 @@ class Command(rocks.commands.move.host.command):
 			filename = '%s.saved' % host
 
 			fromdiskprefix = vm.getLargestPartition(fromphyshost)
-			fromdir = os.path.join(fromdiskprefix, 'xen/disks')
+			fromdir = os.path.join(fromdiskprefix, 'kvm/disks')
 			fromsavefile = os.path.join(fromdir, filename)
 		else:
 			fromsavefile = file
@@ -187,7 +192,7 @@ class Command(rocks.commands.move.host.command):
 		# running state
 		#
 		todiskprefix = vm.getLargestPartition(tophyshost)
-		todir = os.path.join(todiskprefix, 'xen/disks')
+		todir = os.path.join(todiskprefix, 'kvm/disks')
 		tosavefile = os.path.join(todir, filename)
 
 		cmd = copyfile % (fromphyshost, fromsavefile, fromsavefilestat,
@@ -225,7 +230,7 @@ class Command(rocks.commands.move.host.command):
 					(filename, tophyshost)
 
 				toprefix = vm.getLargestPartition(tophyshost)
-				todir = os.path.join(toprefix, 'xen/disks')
+				todir = os.path.join(toprefix, 'kvm/disks')
 				tofile = os.path.join(todir, name)
 
 				cmd = copyfile % (fromphyshost, filename,
@@ -253,12 +258,6 @@ class Command(rocks.commands.move.host.command):
 
 		self.db.execute("""update vm_nodes set physnode = %s where
 			id = %s """ % (physhostid, vmnodeid))
-
-		#
-		# remove the VM configuration file on the 'from' physical host
-		#
-		cmd = 'rm -f /etc/xen/rocks/%s' % host
-		self.command('run.host', [ fromphyshost, 'command=%s' % cmd ])
 
 		#
 		# restore the VM's running state

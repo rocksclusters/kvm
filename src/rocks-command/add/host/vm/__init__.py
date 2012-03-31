@@ -1,4 +1,4 @@
-# $Id: __init__.py,v 1.1 2012/03/17 02:52:29 clem Exp $
+# $Id: __init__.py,v 1.2 2012/03/31 01:07:28 clem Exp $
 # 
 # @Copyright@
 # 
@@ -54,6 +54,11 @@
 # @Copyright@
 #
 # $Log: __init__.py,v $
+# Revision 1.2  2012/03/31 01:07:28  clem
+# latest version of the networking for kvm (vlan out of redhat network script)
+# minor fixes here and there to change the disks path from /state/partition1/xen/disks
+# to /state/partition1/kvm/disks
+#
 # Revision 1.1  2012/03/17 02:52:29  clem
 # I needed to commit all this code! First version of the rocks command for kvm.
 # Soon all the other code
@@ -269,7 +274,7 @@ class Command(rocks.commands.HostArgumentProcessor, rocks.commands.add.command):
 	
 	<param type='string' name='disk'>
 	A disk specification for this VM.
-	The default is: file:/&lt;largest-partition-on-physical-node&gt;/xen/disks/&lt;vm-name&gt;.hda,hda,w
+	The default is: file:/&lt;largest-partition-on-physical-node&gt;/kvm/disks/&lt;vm-name&gt;.hda,hda,w
 	</param>
 
 	<param type='string' name='disksize'>
@@ -685,7 +690,7 @@ class Command(rocks.commands.HostArgumentProcessor, rocks.commands.add.command):
 					+ 'VM\'s disk image')
 
 			disk = '%s:%s,%s,%s' % (vbd_type, 
-				os.path.join(prefix, 'xen/disks', name),
+				os.path.join(prefix, 'kvm/disks', name),
 				device, mode)
 
 		if not mac:
@@ -804,7 +809,8 @@ class Command(rocks.commands.HostArgumentProcessor, rocks.commands.add.command):
 			subnet = None
 			module = None
 		else:
-			module = "'xennet'"
+			#module = "'xennet'"
+			pass
 
 		for host in hosts:
 			self.addVMHost(host, membership, nodename, ip, subnet,

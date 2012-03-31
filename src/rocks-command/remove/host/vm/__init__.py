@@ -1,4 +1,4 @@
-# $Id: __init__.py,v 1.1 2012/03/17 02:52:30 clem Exp $
+# $Id: __init__.py,v 1.2 2012/03/31 01:07:28 clem Exp $
 #
 # @Copyright@
 # 
@@ -54,6 +54,11 @@
 # @Copyright@
 #
 # $Log: __init__.py,v $
+# Revision 1.2  2012/03/31 01:07:28  clem
+# latest version of the networking for kvm (vlan out of redhat network script)
+# minor fixes here and there to change the disks path from /state/partition1/xen/disks
+# to /state/partition1/kvm/disks
+#
 # Revision 1.1  2012/03/17 02:52:30  clem
 # I needed to commit all this code! First version of the rocks command for kvm.
 # Soon all the other code
@@ -160,12 +165,6 @@ class Command(rocks.commands.remove.host.command):
 				physhost, = self.db.fetchone()
 			else:
 				continue
-
-			#
-			# remove the configuration file on the physical node
-			#
-			os.system('ssh -q %s "rm -f /etc/xen/rocks/%s"' % 
-				(physhost, host))
 
 			#
 			# now remove the relevant rows in the database for

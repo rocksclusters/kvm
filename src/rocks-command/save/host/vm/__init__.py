@@ -1,4 +1,4 @@
-# $Id: __init__.py,v 1.1 2012/03/17 02:52:31 clem Exp $
+# $Id: __init__.py,v 1.2 2012/03/31 01:07:28 clem Exp $
 #
 # @Copyright@
 # 
@@ -54,6 +54,11 @@
 # @Copyright@
 #
 # $Log: __init__.py,v $
+# Revision 1.2  2012/03/31 01:07:28  clem
+# latest version of the networking for kvm (vlan out of redhat network script)
+# minor fixes here and there to change the disks path from /state/partition1/xen/disks
+# to /state/partition1/kvm/disks
+#
 # Revision 1.1  2012/03/17 02:52:31  clem
 # I needed to commit all this code! First version of the rocks command for kvm.
 # Soon all the other code
@@ -107,10 +112,10 @@ class Command(rocks.commands.save.host.command):
 	<arg type='string' name='file'>
 	The file name the saved VM state will be stored in. If you don't
 	supply this parameter, then the default file name will be:
-	/&lt;largest-partition-on-physical-host&gt;/xen/disks/&lt;vm-name&gt;.saved.
+	/&lt;largest-partition-on-physical-host&gt;/kvm/disks/&lt;vm-name&gt;.saved.
 	For example, on a physical node with the default partitioning, the
 	saved file for VM compute-0-0-0 will be named:
-	/state/partition1/xen/disks/compute-0-0-0.saved
+	/state/partition1/kvm/disks/compute-0-0-0.saved
 	</arg>
 
 	<example cmd='save host vm compute-0-0-0'>
@@ -144,7 +149,7 @@ class Command(rocks.commands.save.host.command):
 					# create a default file name
 					#
 					file = os.path.join(os.path.join(
-						diskprefix, 'xen/disks'),
+						diskprefix, 'kvm/disks'),
 						'%s.saved' % host)
 
 			if physhost and file:

@@ -1,4 +1,4 @@
-# $Id: __init__.py,v 1.2 2012/03/31 01:07:28 clem Exp $
+# $Id: __init__.py,v 1.3 2012/04/05 21:17:53 clem Exp $
 # 
 # @Copyright@
 # 
@@ -54,6 +54,9 @@
 # @Copyright@
 #
 # $Log: __init__.py,v $
+# Revision 1.3  2012/04/05 21:17:53  clem
+# Minor error in the add host vm
+#
 # Revision 1.2  2012/03/31 01:07:28  clem
 # latest version of the networking for kvm (vlan out of redhat network script)
 # minor fixes here and there to change the disks path from /state/partition1/xen/disks
@@ -807,10 +810,7 @@ class Command(rocks.commands.HostArgumentProcessor, rocks.commands.add.command):
 		if membership == 'Hosted VM':
 			ip = None
 			subnet = None
-			module = None
-		else:
-			#module = "'xennet'"
-			pass
+		module = None
 
 		for host in hosts:
 			self.addVMHost(host, membership, nodename, ip, subnet,

@@ -40,8 +40,8 @@ All rights reserved. Rocks(tm) v5.3 www.rocksclusters.org
 	args="ks ramdisk_size=1500000 lang= devfs=nomount kssendmac selinux=0 noipv6"
 
 /opt/rocks/bin/rocks add bootaction action="install vm frontend" \
-	kernel="file:///boot/kickstart/default/vmlinuz-&rocks_version;-&arch;" \
-	ramdisk="file:///boot/kickstart/default/initrd.img-&rocks_version;-&arch;" \
+	kernel="/boot/kickstart/default/vmlinuz-&rocks_version;-&arch;" \
+	ramdisk="/boot/kickstart/default/initrd.img-&rocks_version;-&arch;" \
 	args="ramdisk_size=150000 lang= devfs=nomount pxe kssendmac selinux=0 noipv6 ks=http://&Kickstart_PublicHostname;/install/sbin/kickstart.cgi ksdevice=eth1 build airboss=localhost"
 
 /opt/rocks/bin/rocks add bootaction action="install frontend" 

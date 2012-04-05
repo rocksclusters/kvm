@@ -25,7 +25,7 @@ All rights reserved. Rocks(tm) v4.3 www.rocksclusters.org
 <package>virt-v2v</package>
 <package>virt-manager</package>
 
-<package>rocks-pygrub</package>
+<package>rocks-command-kvm</package>
 <package>gnutls-utils</package>
 
 

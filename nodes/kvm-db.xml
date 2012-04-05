@@ -20,7 +20,7 @@ All rights reserved. Rocks(tm) v4.3 www.rocksclusters.org
 
 <post>
 
-<file name="/tmp/xen-tables.sql">
+<file name="/tmp/kvm-tables.sql">
 
 DROP TABLE IF EXISTS vm_nodes;
 CREATE TABLE vm_nodes (
@@ -49,7 +49,7 @@ CREATE TABLE vm_disks (
 </file>
 
 /opt/rocks/bin/mysql --defaults-extra-file=/root/.rocks.my.cnf \
-	--user=root cluster &lt; /tmp/xen-tables.sql
+	--user=root cluster &lt; /tmp/kvm-tables.sql
 
 /opt/rocks/sbin/rocks-db-perms
 </post>

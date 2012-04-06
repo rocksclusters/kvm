@@ -1,4 +1,4 @@
-# $Id: __init__.py,v 1.3 2012/03/31 01:07:28 clem Exp $
+# $Id: __init__.py,v 1.4 2012/04/06 00:57:54 clem Exp $
 #
 # @Copyright@
 # 
@@ -54,6 +54,9 @@
 # @Copyright@
 #
 # $Log: __init__.py,v $
+# Revision 1.4  2012/04/06 00:57:54  clem
+# set the boot action to os for the virtual frontend after power on
+#
 # Revision 1.3  2012/03/31 01:07:28  clem
 # latest version of the networking for kvm (vlan out of redhat network script)
 # minor fixes here and there to change the disks path from /state/partition1/xen/disks
@@ -283,7 +286,6 @@ class Command(rocks.commands.start.host.command):
 
 		try:
 			hipervisor.createLinux(xmlconfig, 0)
-			self.command('set.host.boot',[ host, "action=os" ])
 
 		except libvirt.libvirtError, m:
 			str = '%s' % m
@@ -308,8 +310,16 @@ class Command(rocks.commands.start.host.command):
 
 		if retry:
 			hipervisor.createLinux(xmlconfig, 0)
-			if virtType != 'hvm' :
-				self.command('set.host.boot',[ host, "action=os" ])
+
+                #lets check the installAction
+                installAction = None
+                rows = self.db.execute("""select installaction
+                        from nodes where name = '%s' """ % host)
+                if rows > 0:
+                        installAction, = self.db.fetchone()
+                if installAction == "install vm frontend" :
+			#this is a virtual frontend we need to change the boot action
+			self.command('set.host.boot',[ host, "action=os" ])
 
 		return
 

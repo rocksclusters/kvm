@@ -1,4 +1,4 @@
-# $Id: __init__.py,v 1.3 2012/04/05 21:17:53 clem Exp $
+# $Id: __init__.py,v 1.4 2012/04/06 19:25:48 clem Exp $
 # 
 # @Copyright@
 # 
@@ -54,6 +54,9 @@
 # @Copyright@
 #
 # $Log: __init__.py,v $
+# Revision 1.4  2012/04/06 19:25:48  clem
+# install headless so rocks-console works
+#
 # Revision 1.3  2012/04/05 21:17:53  clem
 # Minor error in the add host vm
 #
@@ -735,7 +738,7 @@ class Command(rocks.commands.HostArgumentProcessor, rocks.commands.add.command):
 
 		# HVMs boot just like real hardware
 		if virt_type == 'hvm':
-			self.command('set.host.installaction', [ nodename, 'install' ] )
+			self.command('set.host.installaction', [ nodename, 'install headless' ] )
 			self.command('set.host.runaction', [ nodename, 'os' ] )
 		#
 		# set the first boot state to 'install'

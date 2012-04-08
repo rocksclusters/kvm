@@ -1,4 +1,4 @@
-# $Id: __init__.py,v 1.4 2012/04/06 00:57:54 clem Exp $
+# $Id: __init__.py,v 1.5 2012/04/08 00:49:59 clem Exp $
 #
 # @Copyright@
 # 
@@ -54,6 +54,10 @@
 # @Copyright@
 #
 # $Log: __init__.py,v $
+# Revision 1.5  2012/04/08 00:49:59  clem
+# code refactoring (added a new command sync host vlan)
+# Fixed the restore and move command
+#
 # Revision 1.4  2012/04/06 00:57:54  clem
 # set the boot action to os for the virtual frontend after power on
 #
@@ -206,74 +210,12 @@ class Command(rocks.commands.start.host.command):
 	</example>
 	"""
 
-	def startUpNetwork(self, physhost, host):
-		"""start up Vlan interface on the physhost 
-		if the host is using any of them 
-		Vlan are not managed anymore by the Redhat 
-		network scripts"""
-
-		#get the interface of the VM which are on VLANs
-		self.db.execute("""select net.vlanid
-			from networks net, nodes n
-			where net.node = n.id and net.vlanid > 0 
-			and n.name = "%s" """ % (host))
-		for row in self.db.fetchall():
-			vlanid= row[0]
-
-			#given the vlanid get the network device on the dom0 
-			self.db.execute("""select distinctrow net.device, net.subnet, 
-				net.module, s.mtu, net.options, net.channel
-				from networks net, nodes n, subnets s 
-				where net.node = n.id and if(net.subnet, net.subnet = s.id, true) and
-				n.name = "%s" and net.vlanid = %s order by net.id""" % (physhost, vlanid))
-
-			for row in self.db.fetchall():
-				(device, subnetid, module, mtu, options, channel) = row
-				#print "device: ", device, vlanid
-				#
-				# look up the name of the interface that
-				# maps to this VLAN spec
-				#
-				rows = self.db.execute("""select net.device from
-					networks net, nodes n where
-					n.id = net.node and n.name = '%s'
-					and net.subnet = %d and
-					net.device not like 'vlan%%' """ %
-					(physhost, subnetid))
-				
-				if rows:
-					dev, = self.db.fetchone()
-					#
-					# check if already referencing 
-					# a physical device
-					#
-					if dev != device:
-						device = 'p' + dev
-				else:
-					self.abort('Unable to get device name for dev: ', device)
-
-				#
-				# let's check if the device is already up
-				#
-				ret = os.system("ssh %s ip link show %s.%s > /dev/null 2>&1 " % 
-						(physhost, device, vlanid))
-				if ret != 0:
-					#
-					# the vlan is down let's activate it
-					#
-					ret = os.system("ssh %s \"vconfig add %s %s; ifconfig %s.%s up\" " % 
-							(physhost, device, vlanid, device, vlanid))
-					if ret != 0:
-						self.abort('Unable to instantiate vlan ' + str(vlanid) + \
-							' on device ' + device)
-				
-		
 
 	def bootVM(self, physhost, host, xmlconfig):
 		import rocks.vmconstant
 		hipervisor = libvirt.open( rocks.vmconstant.connectionURL % physhost)
 
-		self.startUpNetwork(physhost, host)
+		self.command('sync.host.vlan', [host])
 		#
 		# suppress an error message when a VM is started and
 		# the disk file doesn't exist yet.

@@ -1,4 +1,4 @@
-# $Id: __init__.py,v 1.2 2012/03/31 01:07:28 clem Exp $
+# $Id: __init__.py,v 1.3 2012/04/08 00:49:59 clem Exp $
 #
 # @Copyright@
 # 
@@ -54,6 +54,10 @@
 # @Copyright@
 #
 # $Log: __init__.py,v $
+# Revision 1.3  2012/04/08 00:49:59  clem
+# code refactoring (added a new command sync host vlan)
+# Fixed the restore and move command
+#
 # Revision 1.2  2012/03/31 01:07:28  clem
 # latest version of the networking for kvm (vlan out of redhat network script)
 # minor fixes here and there to change the disks path from /state/partition1/xen/disks
@@ -145,6 +149,12 @@ class Command(rocks.commands.restore.host.command):
 				if diskprefix:
 					file = os.path.join(diskprefix,
 						'kvm/disks/%s.saved' % host)
+
+			#
+			# we need to start vlan interface if any
+			#
+			self.command('sync.host.vlan', [host])
+
 
 			if physhost and file:
 				#

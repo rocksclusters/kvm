@@ -1,4 +1,4 @@
-# $Id: __init__.py,v 1.2 2012/03/31 01:07:28 clem Exp $
+# $Id: __init__.py,v 1.3 2012/04/08 00:49:59 clem Exp $
 #
 # @Copyright@
 # 
@@ -54,6 +54,10 @@
 # @Copyright@
 #
 # $Log: __init__.py,v $
+# Revision 1.3  2012/04/08 00:49:59  clem
+# code refactoring (added a new command sync host vlan)
+# Fixed the restore and move command
+#
 # Revision 1.2  2012/03/31 01:07:28  clem
 # latest version of the networking for kvm (vlan out of redhat network script)
 # minor fixes here and there to change the disks path from /state/partition1/xen/disks
@@ -100,31 +104,10 @@ import rocks.vm
 #
 # code to copy a file from one host to another
 #
-copyfile = """/opt/rocks/bin/python -c 'import os
-import os.path
-import sys
 
-srchost = \\"%s\\"
-srcfile = \\"%s\\"
-srcstat = %s
-destfile = \\"%s\\"
+preparedir = """ssh %s mkdir -p `dirname %s`"""
+copycmd = """ssh %s cat %s | ssh %s dd of=%s """
 
-if os.path.exists(srcfile) and os.stat(srcfile) == srcstat:
-	sys.exit(0)
-
-try:
-	os.makedirs(os.path.dirname(destfile))
-except:
-	pass
-cmd = \\"scp -q \\" + srchost + \\":\\" + srcfile + \\" \\" + destfile
-cmd += \\" > /dev/null 2>&1\\"
-os.system(cmd)' """
-
-statcmd = """/opt/rocks/bin/python -c 'import os
-try:
-	print os.stat(\\"%s\\")
-except:
-	pass' """
 
 
 class Command(rocks.commands.move.host.command):
@@ -177,15 +160,13 @@ class Command(rocks.commands.move.host.command):
 
 		print "Saving the VM's current state."
 
+		#TODO
+		# add check to see if destination disk is already in the DB
+
 		#
 		# save the VM's running state
 		#
 		self.command('save.host.vm', [ host, "file=%s" % fromsavefile] )
-
-		fromsavefilestat = self.command('run.host', [ fromphyshost,
-			statcmd % fromsavefile ]).strip()
-
-		print "Copying the VM's current state to %s." % (tophyshost)
 
 		#
 		# copy the VM save file to the physical node
@@ -195,10 +176,21 @@ class Command(rocks.commands.move.host.command):
 		todir = os.path.join(todiskprefix, 'kvm/disks')
 		tosavefile = os.path.join(todir, filename)
 
-		cmd = copyfile % (fromphyshost, fromsavefile, fromsavefilestat,
-			tosavefile)
-		debug = self.command('run.host',
-			[ tophyshost, 'command=%s' % cmd ])
+		#make the directory
+		#I can not use run.command cos it doesn't return the exit status 
+		cmd = preparedir % (tophyshost, tosavefile)
+		debug = os.system(cmd)
+		if debug != 0 :
+			self.abort("Unabled to create destination directory on physical host, " 
+				+ tophyshost)
+
+		#copy the file
+		cmd = copycmd % (fromphyshost, fromsavefile, 
+			tophyshost, tosavefile)
+		debug = os.system(cmd)
+		if debug != 0 :
+			self.abort("Unabled to copy vm state on the new physical host, " 
+				+ tophyshost)
 
 		#
 		# copy the VMs disks to the 'from' host
@@ -222,9 +214,6 @@ class Command(rocks.commands.move.host.command):
 				print "Copying VM disk file to %s." % tophyshost
 
 				filename = os.path.join(prefix, name)
-				filestat = self.command('run.host',
-					[ fromphyshost,
-					statcmd % filename ]).strip()
 
 				print "Moving virtual disk (%s) to %s" % \
 					(filename, tophyshost)
@@ -233,11 +222,22 @@ class Command(rocks.commands.move.host.command):
 				todir = os.path.join(toprefix, 'kvm/disks')
 				tofile = os.path.join(todir, name)
 
-				cmd = copyfile % (fromphyshost, filename,
-					filestat, tofile)
-				debug = self.command('run.host',
-					[ tophyshost, 'command=%s' % cmd ])
-				# print 'run.host output: ', debug
+	
+				#make the directory
+				cmd = preparedir % (tophyshost, tofile)
+				debug = os.system(cmd)
+				if debug != 0 :
+					self.abort("Unabled to create destination " 
+						+"directory on physical host, " + tophyshost)
+		
+				#copy the file
+				cmd = copycmd % (fromphyshost, filename,
+					tophyshost, tofile)
+				debug = os.system(cmd)
+				if debug != 0 :
+					self.abort("Unabled to copy vm state on the new "
+						+ "physical host, " + tophyshost)
+
 
 				#
 				# update the disk specification in the database

@@ -1,4 +1,4 @@
-# $Id: __init__.py,v 1.4 2012/03/31 01:07:28 clem Exp $
+# $Id: __init__.py,v 1.5 2012/04/10 22:41:18 clem Exp $
 #
 # @Copyright@
 # 
@@ -222,12 +222,14 @@ class Command(rocks.commands.report.host.command):
 			xmlconfig.append("  <kernel>%s</kernel>" % kernel )
 			xmlconfig.append("  <initrd>%s</initrd>" % ramdisk )
 			xmlconfig.append("  <cmdline>%s</cmdline>" % bootargs )
+			xmlconfig.append("</os>")
+			xmlconfig.append("<on_reboot>destroy</on_reboot>")
 		else:
 			#we boot the machine as if normal hardware
 			xmlconfig.append("  <boot dev='network'/>")
 			xmlconfig.append("  <boot dev='hd'/>")
 			xmlconfig.append("  <bootmenu enable='yes'/>")
-		xmlconfig.append("</os>")
+			xmlconfig.append("</os>")
 
 
 	def getXMLconfig(self, physhost, host):

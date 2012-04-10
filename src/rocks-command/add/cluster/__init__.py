@@ -1,4 +1,4 @@
-# $Id: __init__.py,v 1.3 2012/03/24 02:40:47 clem Exp $
+# $Id: __init__.py,v 1.4 2012/04/10 22:41:18 clem Exp $
 # 
 # @Copyright@
 # 
@@ -54,6 +54,10 @@
 # @Copyright@
 #
 # $Log: __init__.py,v $
+# Revision 1.4  2012/04/10 22:41:18  clem
+# virtual frontend should be destroied at the first reboot so they can boot as action=os
+# no need to restart the network after rocks add cluster
+#
 # Revision 1.3  2012/03/24 02:40:47  clem
 # New virtio driver for disk network
 # New fixed version of the start up boot options
@@ -517,10 +521,6 @@ class Command(rocks.commands.add.command):
 		# reconfigure and restart the appropriate rocks services
 		#
 		print "Syncing Network Configuration --> " 
-		if len(syncHosts) > 0:
-			print "\tSyncing Bringing Up New VLAN interfaces --> " 
-			self.command('sync.host.network', syncHosts)
-			print "\t<-- Done."
 		self.command('sync.config')
 		print "<-- Done."
 

@@ -1,4 +1,4 @@
-# $Id: __init__.py,v 1.1 2012/03/17 02:52:31 clem Exp $
+# $Id: __init__.py,v 1.2 2012/04/10 19:02:00 clem Exp $
 #
 # @Copyright@
 # 
@@ -54,6 +54,9 @@
 # @Copyright@
 #
 # $Log: __init__.py,v $
+# Revision 1.2  2012/04/10 19:02:00  clem
+# deprecated import sha removed
+#
 # Revision 1.1  2012/03/17 02:52:31  clem
 # I needed to commit all this code! First version of the rocks command for kvm.
 # Soon all the other code
@@ -140,7 +143,7 @@ import socket
 import ssl
 import M2Crypto
 import M2Crypto.BIO
-import sha
+import hashlib
 import os
 import sys
 import MySQLdb
@@ -527,7 +530,7 @@ class Command(rocks.commands.start.service.command):
 			#
 			return 0
 
-		digest = sha.sha(clear_text).digest()
+		digest = hashlib.sha1(clear_text).digest()
 
 		for public_key, in self.db.fetchall():
 			bio = M2Crypto.BIO.MemoryBuffer(public_key)

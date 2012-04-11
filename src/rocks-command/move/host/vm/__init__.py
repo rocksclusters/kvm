@@ -1,4 +1,4 @@
-# $Id: __init__.py,v 1.3 2012/04/08 00:49:59 clem Exp $
+# $Id: __init__.py,v 1.4 2012/04/11 17:39:36 clem Exp $
 #
 # @Copyright@
 # 
@@ -54,6 +54,9 @@
 # @Copyright@
 #
 # $Log: __init__.py,v $
+# Revision 1.4  2012/04/11 17:39:36  clem
+# add a check to see if destination host = to source host
+#
 # Revision 1.3  2012/04/08 00:49:59  clem
 # code refactoring (added a new command sync host vlan)
 # Fixed the restore and move command
@@ -149,6 +152,10 @@ class Command(rocks.commands.move.host.command):
 		host = hosts[0]
 		fromphyshost = vm.getPhysHost(host)
 
+		if tophyshost == fromphyshost:
+			self.abort("The source physical host, and the destination " +
+				"host are the same: " + tophyshost)
+
 		if not file:
 			filename = '%s.saved' % host
 
@@ -159,9 +166,6 @@ class Command(rocks.commands.move.host.command):
 			fromsavefile = file
 
 		print "Saving the VM's current state."
-
-		#TODO
-		# add check to see if destination disk is already in the DB
 
 		#
 		# save the VM's running state

@@ -1,4 +1,4 @@
-# $Id: __init__.py,v 1.4 2012/04/10 22:41:18 clem Exp $
+# $Id: __init__.py,v 1.5 2012/04/12 18:43:08 clem Exp $
 # 
 # @Copyright@
 # 
@@ -54,6 +54,9 @@
 # @Copyright@
 #
 # $Log: __init__.py,v $
+# Revision 1.5  2012/04/12 18:43:08  clem
+# no more need to sync the network after add cluster, cleanup of useless code
+#
 # Revision 1.4  2012/04/10 22:41:18  clem
 # virtual frontend should be destroied at the first reboot so they can boot as action=os
 # no need to restart the network after rocks add cluster
@@ -306,7 +309,7 @@ class Command(rocks.commands.add.command):
 		return fqdn.split('.')[0]
 
 
-	def addVlanToHost(self, host, vlan, subnet, syncHosts):
+	def addVlanToHost(self, host, vlan, subnet):
 		#
 		# configure the vlan on host 
 		#
@@ -320,13 +323,11 @@ class Command(rocks.commands.add.command):
 			output = self.command('add.host.interface', [ host,
 				'iface=vlan%d' % vlan, 'subnet=%s' % subnet,
 				'vlan=%d' % vlan])
-			if host not in syncHosts:
-				syncHosts.append(host)
 		except:
 			self.abort ("could not add vlan %d \
 			(network=%s) for host %s\n" % (vlan, subnet,host))
 
-	def createFrontend(self, vlan, subnet, ip, disksize, gateway, virtType, FEName, FEContainer, syncHosts):
+	def createFrontend(self, vlan, subnet, ip, disksize, gateway, virtType, FEName, FEContainer):
 		
 		args = [ FEContainer, 'membership=Frontend', 'num-macs=2',
 			'disksize=%s' % disksize, 'vlan=%d,0' % vlan,
@@ -336,7 +337,7 @@ class Command(rocks.commands.add.command):
 			args.append('name=%s' % FEName)
 		  
 	
-		self.addVlanToHost( FEContainer, vlan, subnet, syncHosts)
+		self.addVlanToHost( FEContainer, vlan, subnet)
 
 		output = self.command('add.host.vm', args)
 
@@ -385,7 +386,7 @@ class Command(rocks.commands.add.command):
 
 	def createComputes(self, vlan, subnet, computes, containers,
 		cpus_per_compute, mem_per_compute, 
-		disk_per_compute, virtType, syncHosts):
+		disk_per_compute, virtType):
 
 		self.computenames = []
 		
@@ -398,7 +399,7 @@ class Command(rocks.commands.add.command):
 		for i in range(0, computes):
 			host = containers[i % len(containers)]
 
-			self.addVlanToHost( host, vlan, subnet, syncHosts)
+			self.addVlanToHost( host, vlan, subnet)
 			output = self.command('add.host.vm', [ host,
 				'membership=Hosted VM', 'num-macs=1',
 				'cpus=%s' % cpus_per_compute,
@@ -497,14 +498,12 @@ class Command(rocks.commands.add.command):
 		else:
 			containers = self.getVMContainers()
 	
-		syncHosts = []
-
 		#
 		# create the frontend VM
 		#
 		print "Creating Virtual Frontend on Physical Host %s --> " % FEContainer 
 		self.createFrontend(vlanid, subnet, ip, disk_per_frontend, gateway, 
-				virtType, FEName, FEContainer, syncHosts)
+				virtType, FEName, FEContainer)
 		print "<-- Done."
 
 		#
@@ -514,7 +513,7 @@ class Command(rocks.commands.add.command):
 			print "Creating %d Virtual Cluster nodes  --> " % computes 
 			self.createComputes(vlanid, subnet, computes, containers,
 				cpus_per_compute, mem_per_compute, 
-				disk_per_compute, virtType, syncHosts)
+				disk_per_compute, virtType)
 			print "<-- Done."
 
 		#

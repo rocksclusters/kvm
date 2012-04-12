@@ -1,4 +1,4 @@
-# $Id: __init__.py,v 1.4 2012/04/11 17:39:36 clem Exp $
+# $Id: __init__.py,v 1.5 2012/04/12 18:43:44 clem Exp $
 #
 # @Copyright@
 # 
@@ -54,6 +54,9 @@
 # @Copyright@
 #
 # $Log: __init__.py,v $
+# Revision 1.5  2012/04/12 18:43:44  clem
+# bug fix, vlan interface must be created on the physical destination host
+#
 # Revision 1.4  2012/04/11 17:39:36  clem
 # add a check to see if destination host = to source host
 #
@@ -133,6 +136,30 @@ class Command(rocks.commands.move.host.command):
 	Move VM host compute-0-0-0 to physical host vm-container-1-0.
 	</example>
 	"""
+
+
+
+	def addVlanToHost(self, host, vlan, subnet):
+		#TODO this code is copied from add/cluster/__init__.py
+
+                #
+                # configure the vlan on host 
+                #
+                self.db.execute("""SELECT net.vlanid FROM networks net,nodes n 
+                        WHERE net.vlanid=%d 
+                        AND net.node=n.id AND n.name='%s' """ %(vlan,host))
+                if self.db.fetchone() :
+                                # interface already exists. That's OK
+                                return
+                try:
+                        output = self.command('add.host.interface', [ host,
+                                'iface=vlan%d' % vlan, 'subnet=%s' % subnet,
+                                'vlan=%d' % vlan])
+                except:
+                        self.abort ("could not add vlan %d \
+                        (network=%s) for host %s\n" % (vlan, subnet,host))
+
+
 
 	def run(self, params, args):
 		(args, tophyshost) = self.fillPositionalArgs(('physhost', ))
@@ -235,8 +262,7 @@ class Command(rocks.commands.move.host.command):
 						+"directory on physical host, " + tophyshost)
 		
 				#copy the file
-				cmd = copycmd % (fromphyshost, filename,
-					tophyshost, tofile)
+				cmd = copycmd % (fromphyshost, filename, tophyshost, tofile)
 				debug = os.system(cmd)
 				if debug != 0 :
 					self.abort("Unabled to copy vm state on the new "
@@ -262,6 +288,25 @@ class Command(rocks.commands.move.host.command):
 
 		self.db.execute("""update vm_nodes set physnode = %s where
 			id = %s """ % (physhostid, vmnodeid))
+
+		#
+		# update vlan on physhostid if it is not already present
+		#
+		rows = self.db.execute("""select VlanID from networks where node=%s""" % vmnodeid)
+		if rows < 1:
+			self.abort("Unable to find vlanid for host migration")
+		vlanid, = self.db.fetchone()
+
+		rows = self.db.execute("""select sub.name  
+			from networks as net, nodes as n, subnets sub 
+			where n.name='%s' and net.vlanid=%s 
+			and n.id=net.node and sub.id=net.subnet""" %
+			(tophsyhost, vlanid))
+		if rows < 1:
+			self.abort("Unable to find subnet for host migration")
+		subnet, = self.db.fetchone()
+
+		self.addVlanToHost(tophyshost, vlanid, subnet)
 
 		#
 		# restore the VM's running state

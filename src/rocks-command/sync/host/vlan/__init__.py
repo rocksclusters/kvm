@@ -1,4 +1,4 @@
-# $Id: __init__.py,v 1.1 2012/04/08 00:49:59 clem Exp $
+# $Id: __init__.py,v 1.2 2012/04/12 18:44:13 clem Exp $
 # 
 # @Copyright@
 # 
@@ -130,8 +130,9 @@ class Command(rocks.commands.sync.host.command):
 					#
 					# the vlan is down let's activate it
 					#
-					ret = os.system("ssh %s \"vconfig add %s %s; ifconfig %s.%s up\" " % 
-							(physhost, device, vlanid, device, vlanid))
+					ret = os.system(("ssh %s \"vconfig add %s %s; ifconfig %s.%s up; " +
+							" ip link set arp off dev %s.%s\" ") % 
+							(physhost, device, vlanid, device, vlanid, device, vlanid))
 					if ret != 0:
 						self.abort('Unable to instantiate vlan ' + str(vlanid) + \
 							' on device ' + device)
@@ -168,8 +169,3 @@ class Command(rocks.commands.sync.host.command):
 			self.startUpNetwork(physhost, host)
 
 
-
-
-
-
-RollName = "kvm"

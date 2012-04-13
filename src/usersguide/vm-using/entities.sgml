@@ -3,3 +3,4 @@
 <!ENTITY virtual-clusters SYSTEM "virtual-clusters.sgml">
 <!ENTITY vm-install SYSTEM "vm-install.sgml">
 <!ENTITY pilot SYSTEM "pilot.sgml">
+<!ENTITY network SYSTEM "network.sgml">

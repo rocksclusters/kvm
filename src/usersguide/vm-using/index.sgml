@@ -6,5 +6,6 @@
 &virtual-clusters;
 &vm-install;
 &pilot;
+&network;
 
 </chapter>

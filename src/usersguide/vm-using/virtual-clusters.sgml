@@ -40,7 +40,7 @@ DomU are guests and generally refer to names by usual convention.
 The equivalence is:
 
 <table>
-<title></title>
+<title>Virtual Machine Names</title>
 <tgroup cols="3">
 	<thead>
 	<row>

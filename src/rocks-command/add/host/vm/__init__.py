@@ -1,4 +1,4 @@
-# $Id: __init__.py,v 1.4 2012/04/06 19:25:48 clem Exp $
+# $Id: __init__.py,v 1.5 2012/04/13 02:25:22 clem Exp $
 # 
 # @Copyright@
 # 
@@ -54,6 +54,9 @@
 # @Copyright@
 #
 # $Log: __init__.py,v $
+# Revision 1.5  2012/04/13 02:25:22  clem
+# some nimor fixes to the documentation of the command
+#
 # Revision 1.4  2012/04/06 19:25:48  clem
 # install headless so rocks-console works
 #
@@ -233,8 +236,8 @@ class Command(rocks.commands.HostArgumentProcessor, rocks.commands.add.command):
 	</param>
 
 	<param type='string' name='virt-type'>
-	Virtualization Type. Valid Values are [para,hvm]. Defaults
-	to para for paravirtualized. 
+	Virtualization Type. With the kvm roll only hvm is 
+	a valid value.
 	</param>
 
 	<param type='string' name='name'>

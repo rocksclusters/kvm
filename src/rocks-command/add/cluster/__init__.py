@@ -1,4 +1,4 @@
-# $Id: __init__.py,v 1.5 2012/04/12 18:43:08 clem Exp $
+# $Id: __init__.py,v 1.6 2012/04/13 02:25:22 clem Exp $
 # 
 # @Copyright@
 # 
@@ -54,6 +54,9 @@
 # @Copyright@
 #
 # $Log: __init__.py,v $
+# Revision 1.6  2012/04/13 02:25:22  clem
+# some nimor fixes to the documentation of the command
+#
 # Revision 1.5  2012/04/12 18:43:08  clem
 # no more need to sync the network after add cluster, cleanup of useless code
 #
@@ -213,7 +216,8 @@ class Command(rocks.commands.add.command):
 
 	<param type='string' name='virt-type'>
 	Defines the virtualization type as either paravirtualized (para) or
-        Hardware Virtualized (hvm). Default is para.
+        Hardware Virtualized (hvm). KVM supports only hvm if you try to specify
+	something else it will abort.
 	</param>
 
 	<param type='string' name='cpus-per-compute'>

@@ -1,4 +1,4 @@
-# $Id: __init__.py,v 1.3 2012/04/13 02:25:22 clem Exp $
+# $Id: __init__.py,v 1.4 2012/04/13 02:29:23 clem Exp $
 # 
 # @Copyright@
 # 
@@ -63,10 +63,10 @@ import rocks.commands
 class Command(rocks.commands.sync.host.command):
 	"""
 	Start the vlan interface needed by virtual 
-	machines on a vm-containers and on frontends
-	VLan used by virtual machine now are not anymore under
-	red hat network manager control, but they are started 
-	automatically by this command
+	machines on a vm-containers and on frontends.
+	VLan used by virtual machines now are not anymore under
+	Red Hat network manager control, but they are started 
+	automatically by this command.
 	
 
 	<example cmd='sync host vlan compute-0-0-0'>

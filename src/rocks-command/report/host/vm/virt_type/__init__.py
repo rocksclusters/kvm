@@ -1,4 +1,4 @@
-# $Id: __init__.py,v 1.1 2012/03/17 02:52:30 clem Exp $
+# $Id: __init__.py,v 1.2 2012/04/13 02:29:23 clem Exp $
 # 
 # @Copyright@
 # 
@@ -54,6 +54,9 @@
 # @Copyright@
 #
 # $Log: __init__.py,v $
+# Revision 1.2  2012/04/13 02:29:23  clem
+# more fixes
+#
 # Revision 1.1  2012/03/17 02:52:30  clem
 # I needed to commit all this code! First version of the rocks command for kvm.
 # Soon all the other code
@@ -82,7 +85,8 @@ import sys
 
 class Command(rocks.commands.report.host.command):
 	"""
-	Output the type of virtualization used for a VM.
+	Output the type of virtualization used for a VM (with KVM
+	it is always equal to hvm).
 	
 	<arg name='host' type='string'>
 	One VM host name (e.g., compute-0-0-0).

@@ -1,4 +1,4 @@
-# $Id: __init__.py,v 1.5 2012/04/12 18:43:44 clem Exp $
+# $Id: __init__.py,v 1.6 2012/04/13 01:47:12 clem Exp $
 #
 # @Copyright@
 # 
@@ -54,6 +54,9 @@
 # @Copyright@
 #
 # $Log: __init__.py,v $
+# Revision 1.6  2012/04/13 01:47:12  clem
+# More fixes in the move command
+#
 # Revision 1.5  2012/04/12 18:43:44  clem
 # bug fix, vlan interface must be created on the physical destination host
 #
@@ -292,16 +295,17 @@ class Command(rocks.commands.move.host.command):
 		#
 		# update vlan on physhostid if it is not already present
 		#
-		rows = self.db.execute("""select VlanID from networks where node=%s""" % vmnodeid)
+		rows = self.db.execute("""select vlanid from networks as net, nodes as n 
+				where n.id = net.node and n.name='%s'""" % host)
 		if rows < 1:
-			self.abort("Unable to find vlanid for host migration")
+			self.abort("Unable to find vlanid for host " + host)
 		vlanid, = self.db.fetchone()
 
 		rows = self.db.execute("""select sub.name  
 			from networks as net, nodes as n, subnets sub 
 			where n.name='%s' and net.vlanid=%s 
 			and n.id=net.node and sub.id=net.subnet""" %
-			(tophsyhost, vlanid))
+			(tophyshost, vlanid))
 		if rows < 1:
 			self.abort("Unable to find subnet for host migration")
 		subnet, = self.db.fetchone()

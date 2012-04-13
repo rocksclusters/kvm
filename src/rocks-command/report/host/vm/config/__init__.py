@@ -1,4 +1,4 @@
-# $Id: __init__.py,v 1.5 2012/04/10 22:41:18 clem Exp $
+# $Id: __init__.py,v 1.6 2012/04/13 22:12:40 clem Exp $
 #
 # @Copyright@
 # 
@@ -348,8 +348,6 @@ class Command(rocks.commands.report.host.command):
 				xmlconfig.append(a)
 
 				a = "<target dev='%s' bus='virtio'/>" % device
-				#TODO add virtio for performance
-				#<target dev='vda' bus='virtio'/>
 				xmlconfig.append(a)
 
 				a = "</disk>"
@@ -363,8 +361,6 @@ class Command(rocks.commands.report.host.command):
 				xmlconfig.append(a)
 
 				a = "<target dev='%s' bus='virtio'/>" % device
-                                #TODO add virtio for performance
-                                #<target dev='vda' bus='virtio'/>
 				xmlconfig.append(a)
 
 				a = "</disk>"

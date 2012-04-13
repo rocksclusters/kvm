@@ -1,0 +1,47 @@
+<section id="using-vm-container" xreflabel="Installing VM Containers">
+	<title>Installing VM Containers </title>
+
+<para>
+You will need to install a physical machine that will act as the
+"container" for your VMs.
+This method is very similar to the method for installing compute nodes.
+</para>
+
+<para>
+On the frontend, execute:
+</para>
+
+<screen>
+# insert-ethers
+</screen>
+
+<para>
+You will see a screen that looks like:
+</para>
+
+<para>
+<mediaobject>
+	<imageobject>
+		<imagedata fileref="images/vm-container.png">
+	</imageobject>
+</mediaobject>
+</para>
+
+<para>
+Select the 'VM Container' appliance, then hit 'OK'.
+</para>
+
+<para>
+Now PXE boot the physical machine that will be your VM container.
+Just like a compute node, the VM container will be recognized by insert-ethers
+and installed.
+The default name of the node will be
+<computeroutput>vm-container-X-Y</computeroutput>.
+</para>
+
+<para>
+You can install as many VM containers as you like.
+</para>
+
+</section>
+

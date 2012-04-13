@@ -1,0 +1,30 @@
+<preface id="preface" xreflabel="preface">
+<title>Preface</title>
+
+
+<para>
+The KVM Roll installs and configures the VMs on Rocks Clusters.
+</para>
+
+<para>
+A physical frontend can configure VMs on client nodes 
+(<emphasis>VM container</emphasis> appliances).
+A VM container is a physical machine that houses and runs VMs.
+</para>
+
+<para>
+The KVM Roll also supports building virtual clusters.
+The frontend can be installed as a <emphasis>VM server</emphasis> appliance
+and the client nodes can be installed as VM containers.
+Then a virtual frontend can be installed on the VM server while virtual
+compute nodes can be installed on the VM containers.
+All network traffic is encapsulated within a unique VLAN, that is, each
+virtual cluster has its own VLAN.
+</para>
+
+<para>
+Please visit the <ulink url="http://www.linux-kvm.org">KVM site</ulink> 
+to learn more about their release and the individual software components.
+</para>
+
+</preface>

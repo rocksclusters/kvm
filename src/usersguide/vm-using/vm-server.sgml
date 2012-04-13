@@ -1,0 +1,23 @@
+<section id="using-vm-server" xreflabel="Installing a VM Server">
+	<title>Installing a VM Server</title>
+
+<para>
+A VM Server is machine that can house virtual frontend appliances.
+It is required to build a VM Server if you wish to build virtual clusters.
+</para>
+
+<para>
+Building a VM Server is just like building a traditional frontend, except
+that you <emphasis>must have installed properly the KVM Roll</emphasis>.
+Follow the procedure
+<ulink url="/roll-documentation/base/&document-version;/install-frontend.html">
+Install and Configure Your Frontend</ulink> and be sure to supply the KVM Roll.
+</para>
+
+<para>
+After you build the VM Server, you'll need to install VM Containers (see
+the next section).
+</para>
+
+</section>
+

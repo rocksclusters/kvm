@@ -1,0 +1,63 @@
+<!--
+$Id: index.sgml,v 1.1 2012/04/13 02:31:16 clem Exp $
+
+@Copyright@
+@Copyright@
+
+-->
+
+<!DOCTYPE book PUBLIC "-//OASIS//DTD DocBook V3.1//EN" [
+	<!ENTITY % entities SYSTEM "entities.sgml">
+
+	<!ENTITY vm-using SYSTEM "vm-using/index.sgml">
+	<!ENTITY % vm-using-entities SYSTEM "vm-using/entities.sgml">
+
+	<!ENTITY roll-kvm "<command>Xen</command>">
+
+	%vm-using-entities;
+	%entities;
+]>
+
+
+
+<book>
+<bookinfo>
+
+	<title> &roll-kvm; Users Guide </title>
+
+	<subtitle>
+		<inlinemediaobject>
+			<imageobject>
+				<imagedata fileref="images/kvmbanner.png">
+			</imageobject>
+		</inlinemediaobject>
+	</subtitle>
+
+        <edition>&document-version;</edition>
+        <pubdate>&document-pubdate;</pubdate>
+        <copyright id="copyright" xreflabel="copyright">
+                <year>&document-year;</year>
+                <holder>&document-copyright;</holder>    
+        </copyright>
+
+        <releaseinfo>
+                <ulink url="roll-kvm-usersguide.pdf">(PDF version)</ulink>
+        </releaseinfo>
+
+        <legalnotice>
+                <para>
+                This document is subject to the &rocks; License 
+                (see <xref linkend="rocks-copyright">).
+                </para>
+        </legalnotice>
+
+</bookinfo>
+
+&source-preface;
+&source-roll-overview;
+&source-installing;
+&vm-using;
+&source-roll-commands;
+&source-appendix;
+
+</book>

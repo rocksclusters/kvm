@@ -1,0 +1,32 @@
+<!--
+$Id: appendix.sgml,v 1.1 2012/04/13 02:31:16 clem Exp $
+
+Appendix for Copyright and License notices
+
+@Copyright@
+@Copyright@
+
+
+
+-->
+
+<appendix id="rocks-copyright" xreflabel="Appendix A: Rocks Copyright">
+<title>&rocks; Copyright</title>
+<para>
+<screen>
+&rockscopyright;
+</screen>
+</para>
+</appendix>
+
+<appendix>
+<title>Third Party Copyrights and Licenses</title>
+
+&source-roll-copyright-disclaimer;
+
+<!--<section><title>kvm</title><para><screen>
+<![CDATA[
+]]>
+</screen></para></section> -->
+
+</appendix>

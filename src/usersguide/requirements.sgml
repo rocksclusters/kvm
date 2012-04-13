@@ -1,0 +1,32 @@
+<chapter id="requirements" xreflabel="Requirements">
+
+
+<title>Requirements</title>
+
+<section id="rocks-version" xreflabel="Rocks Version">
+<title>Rocks Version</title>
+
+<para>
+
+The KVM Roll is for use with Rocks version &document-version;.
+
+</para>
+
+</section>
+
+
+<section id="other-rolls" xreflabel="Other Rolls">
+<title>Other Rolls</title>
+
+<para>
+
+The KVM Roll is does not require any other Rolls. Compatiblity 
+has been verified with the following Rolls.
+
+</para>
+
+
+</section>
+
+
+</chapter>

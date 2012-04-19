@@ -1,4 +1,4 @@
-# $Id: __init__.py,v 1.6 2012/04/13 01:47:12 clem Exp $
+# $Id: __init__.py,v 1.7 2012/04/19 05:12:05 clem Exp $
 #
 # @Copyright@
 # 
@@ -54,6 +54,10 @@
 # @Copyright@
 #
 # $Log: __init__.py,v $
+# Revision 1.7  2012/04/19 05:12:05  clem
+# More fixes on the rocks move host vm
+# Tested and fixed the test_vm.sh procedure
+#
 # Revision 1.6  2012/04/13 01:47:12  clem
 # More fixes in the move command
 #
@@ -301,16 +305,19 @@ class Command(rocks.commands.move.host.command):
 			self.abort("Unable to find vlanid for host " + host)
 		vlanid, = self.db.fetchone()
 
-		rows = self.db.execute("""select sub.name  
-			from networks as net, nodes as n, subnets sub 
-			where n.name='%s' and net.vlanid=%s 
-			and n.id=net.node and sub.id=net.subnet""" %
-			(tophyshost, vlanid))
-		if rows < 1:
-			self.abort("Unable to find subnet for host migration")
-		subnet, = self.db.fetchone()
+		if vlanid != None:
+			# we are moving a virtual cluster node
+			# hence we need to move its' vlan as well
+			rows = self.db.execute("""select sub.name  
+				from networks as net, nodes as n, subnets sub 
+				where n.name='%s' and net.vlanid=%s 
+				and n.id=net.node and sub.id=net.subnet""" %
+				(tophyshost, vlanid))
+			if rows < 1:
+				self.abort("Unable to find subnet for host migration")
+			subnet, = self.db.fetchone()
 
-		self.addVlanToHost(tophyshost, vlanid, subnet)
+			self.addVlanToHost(tophyshost, vlanid, subnet)
 
 		#
 		# restore the VM's running state

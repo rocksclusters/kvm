@@ -389,7 +389,7 @@ On the virtual frontend (e.g., vi-1), execute:
 </para>
 
 <screen>
-# ssh -L 8677:localhost:8677 espresso.rocksclusters.org
+# ssh -f -N -L 8677:localhost:8677 espresso.rocksclusters.org
 </screen>
 
 <para>

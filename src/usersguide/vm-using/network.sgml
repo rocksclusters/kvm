@@ -1,15 +1,25 @@
 <section id="network" xreflabel="KVM Networking">
-	<title>KVM networking (Advanced)</title>
+	<title>KVM Networking (Advanced)</title>
 
 <para>
-With the KVM roll Virtual Machines can run only on Frontend or on VM Container.
-In order to be able to host virtual machine, Frontend and VM Containers adopt a 
-different networking configuration compared to standard CentOS configuration.
-In this paragraph we will explain in much details this settings.
+In order to support KVM Virtual Machines it is neccesary to have in place a 
+particular network configuration on the hosting servers (which can be frontends
+or vm-containers). In particular bridges must be set up to provide Virtual 
+Machine with network connectivity (KVM networking differ substantially from 
+XEN networking). In this paragraph we will explain in much details what are 
+the differences from a standard Rocks Cluster network configuration.
+</para>
+
+<section>
+<title>VM Network Bridging to Physical Devices</title>
+
+<para>
+When a VM is bridged to the physical device, it must be assigned in the same subnet as the physical device with 
+a compatible IP address (this case is exactly what is described in <xref linkend="using-vm-physical-frontend"> ).
 </para>
 
 <para>
-Every Ethernet interfaces is renamed with a 'p' (for physical) in front of its 
+For this reason every Ethernet interfaces is renamed with a 'p' (for physical) in front of its 
 original name. The interface is also put into promiscuous mode and then 
 attached to a bridge named with the original name of the interface. The IP 
 address and netmask are finally configured on the bridge device. 
@@ -46,11 +56,21 @@ As you can see from the previous example bridge eth0 is connected to peth0
 (the physical interface) and vnet0 (the virtual interface of the virtual machine).
 virbr0 is a default bridge started by libvirt which you can ignore.
 </para>
+</section>
+
+<section>
+<title>Logical VLAN Devices</title>
+<para>
+In this scenario, The guest (hosted-vm-0-0-0) and the host (vm-container-0-0) are not in the same logical
+network (this is the scenario described in <xref linkend="provisioning-virtual-cluster">).
+</para>
 
 <para>
-If you create a virtual cluster your virtual machines will be connected through a 
-different VLAN.
-Vlan interface don't need bridge devices and they are dynamically loaded only when 
+The virtual machine hosted-vm-0-0-0 will be connected to the network through a 
+Logical VLAN (for more information consult 
+<ulink url="http://www.rocksclusters.org/roll-documentation/base/6.0/x1051.html#NETWORKING-LOGICAL-VLAN">
+the Base Roll documentation on networking</ulink>).
+Logical Vlan interfaces don't need bridge device and they are dynamically loaded only when 
 the virtual machine is started. They are called after the physical name interface 
 simply adding the number of the VLAN (e.g. VLAN 2 on peth0 will be called peth0.2).
 Virtual machines are attached to the VLAN interface using a 
@@ -61,6 +81,7 @@ node you will see an interface called peth0.2 (the physical peth0 with the VLAN 
 set to 2) and the macvtap0 which is the interface used by the virtual host.
 </para>
 
+</section>
 
 
 </section>

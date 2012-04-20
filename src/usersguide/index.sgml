@@ -1,5 +1,5 @@
 <!--
-$Id: index.sgml,v 1.1 2012/04/13 02:31:16 clem Exp $
+$Id: index.sgml,v 1.2 2012/04/20 02:00:21 clem Exp $
 
 @Copyright@
 @Copyright@
@@ -12,7 +12,7 @@ $Id: index.sgml,v 1.1 2012/04/13 02:31:16 clem Exp $
 	<!ENTITY vm-using SYSTEM "vm-using/index.sgml">
 	<!ENTITY % vm-using-entities SYSTEM "vm-using/entities.sgml">
 
-	<!ENTITY roll-kvm "<command>Xen</command>">
+	<!ENTITY roll-kvm "<command>Kvm</command>">
 
 	%vm-using-entities;
 	%entities;

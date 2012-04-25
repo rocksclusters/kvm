@@ -53,7 +53,7 @@ rocks add cluster 137.110.119.101 2
 rocks start host vm frontend-0-0-0
 
 echo Starting frontend 
-rocks create keys key=private.key passphrase=no > pubblic.key
+rocks create keys key=private.key passphrase=no > public.key
 #need to sleep to wait for the public.key to be present
 sleep 10
 rocks add host key frontend-0-0-0 key=public.key

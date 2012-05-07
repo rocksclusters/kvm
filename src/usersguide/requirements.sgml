@@ -8,7 +8,8 @@
 
 <para>
 
-The KVM Roll is for use with Rocks version &document-version;.
+The KVM Roll is for use with Rocks version &document-version;, and it runs only 
+on 64 bit platform. 
 
 </para>
 

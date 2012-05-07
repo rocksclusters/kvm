@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.3 2012/05/06 05:49:15 phil Exp $
+# $Id: Makefile,v 1.4 2012/05/07 14:15:04 phil Exp $
 #
 # @Copyright@
 # 
@@ -56,6 +56,8 @@
 #
 
 
+ARCH=$(shell ../_arch)
+
 SRCDIRS = `find . -maxdepth 1 -type d -not -name CVS -not -name .`
 
 SRCDIRS += ../../xen/src/airboss
@@ -68,7 +70,7 @@ copyright rpm clean::
 		cd -; \
 	done
 	#copying pygrub and 
-	cp ../../xen/RPMS/x86_64/rocks-airboss-*.x86_64.rpm ../RPMS/x86_64/
+	cp ../../xen/RPMS/$(ARCH)/rocks-airboss-*.$(ARCH).rpm ../RPMS/$(ARCH)/
 
 
 copyright clean::

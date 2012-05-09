@@ -1,5 +1,5 @@
 <!--
-$Id: appendix.sgml,v 1.1 2012/04/13 02:31:16 clem Exp $
+$Id: appendix.sgml,v 1.2 2012/05/09 17:43:59 clem Exp $
 
 Appendix for Copyright and License notices
 
@@ -28,5 +28,31 @@ Appendix for Copyright and License notices
 <![CDATA[
 ]]>
 </screen></para></section> -->
+
+</appendix>
+
+<appendix>
+<title>Known issues</title>
+<para>
+This is the list of known issue with the KVM roll:
+</para>
+
+<orderedlist>
+
+<listitem>
+<para>
+Ethernet channel bonding does not work with the KVM roll (rocks add host bonded).
+</para>
+</listitem>
+
+
+<listitem>
+<para>
+Nvidia MCP77 integrated Ethernet Controller does not handle properly vlan tagged packages,
+so virtual clusters will not work on this hardware.
+</para>
+</listitem>
+
+</orderedlist>
 
 </appendix>

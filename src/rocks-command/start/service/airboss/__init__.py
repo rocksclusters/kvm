@@ -1,4 +1,4 @@
-# $Id: __init__.py,v 1.3 2012/05/06 05:49:18 phil Exp $
+# $Id: __init__.py,v 1.4 2012/05/09 16:48:37 clem Exp $
 #
 # @Copyright@
 # 
@@ -55,6 +55,9 @@
 # @Copyright@
 #
 # $Log: __init__.py,v $
+# Revision 1.4  2012/05/09 16:48:37  clem
+# ported to rocks 5.5
+#
 # Revision 1.3  2012/05/06 05:49:18  phil
 # Copyright Storm for Mamba
 #
@@ -147,7 +150,6 @@ import socket
 import ssl
 import M2Crypto
 import M2Crypto.BIO
-import hashlib
 import os
 import sys
 import MySQLdb
@@ -534,7 +536,12 @@ class Command(rocks.commands.start.service.command):
 			#
 			return 0
 
-		digest = hashlib.sha1(clear_text).digest()
+		try:
+			import hashlib
+			digest = hashlib.sha1(clear_text).digest()
+		except ImportError:
+			import sha
+			digest = sha.sha(clear_text).digest()
 
 		for public_key, in self.db.fetchall():
 			bio = M2Crypto.BIO.MemoryBuffer(public_key)

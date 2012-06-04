@@ -1,4 +1,4 @@
-# $Id: __init__.py,v 1.2 2012/05/06 05:49:16 phil Exp $
+# $Id: __init__.py,v 1.3 2012/06/04 22:25:50 clem Exp $
 # 
 # @Copyright@
 # 
@@ -55,6 +55,9 @@
 # @Copyright@
 #
 # $Log: __init__.py,v $
+# Revision 1.3  2012/06/04 22:25:50  clem
+# no need for double quote the command variable in rocks.run.command [host, command]
+#
 # Revision 1.2  2012/05/06 05:49:16  phil
 # Copyright Storm for Mamba
 #
@@ -188,8 +191,8 @@ class Command(rocks.commands.HostArgumentProcessor,
 						(vlanid, node))
 
 				device, = self.db.fetchone()
-				cmd = '"rm -f /etc/sysconfig/network-scripts/'
-				cmd += 'ifcfg-%s.%s"' % (device, vlanid)
+				cmd = 'rm -f /etc/sysconfig/network-scripts/'
+				cmd += 'ifcfg-%s.%s' % (device, vlanid)
 
 				self.command('run.host', [ node, cmd ] )
 

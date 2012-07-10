@@ -21,9 +21,12 @@ All rights reserved. Rocks(tm) v4.3 www.rocksclusters.org
 <package>libvirt</package>
 
 <!-- no necessary but usefull -->
+<package>guestfish</package>
 <package>qemu-kvm-tools</package>
-<package>virt-v2v</package>
 <package>virt-manager</package>
+<package>virt-p2v</package>
+<package>virt-top</package>
+<package>virt-v2v</package>
 
 <package>rocks-command-kvm</package>
 <package>gnutls-utils</package>

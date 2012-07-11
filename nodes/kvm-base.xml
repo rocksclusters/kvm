@@ -17,6 +17,7 @@ All rights reserved. Rocks(tm) v4.3 www.rocksclusters.org
 </changelog>
 
 
+<package>bridge-utils</package>
 <package>qemu-kvm</package>
 <package>libvirt</package>
 

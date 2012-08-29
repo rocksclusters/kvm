@@ -1,4 +1,4 @@
-# $Id: __init__.py,v 1.2 2012/05/06 05:49:18 phil Exp $
+# $Id: __init__.py,v 1.3 2012/08/29 01:39:55 clem Exp $
 # 
 # @Copyright@
 # 
@@ -55,6 +55,16 @@
 # @Copyright@
 #
 # $Log: __init__.py,v $
+# Revision 1.3  2012/08/29 01:39:55  clem
+# Rework of the disk management in kvm
+#
+# - Now it support qcow2 format (default is still raw
+#
+# - Now it is also possible to specify the device used to
+#   expose the disk inside the virtual machine
+#
+# - added some docs on the new disk string format
+#
 # Revision 1.2  2012/05/06 05:49:18  phil
 # Copyright Storm for Mamba
 #
@@ -139,6 +149,8 @@ class Command(rocks.commands.HostArgumentProcessor, rocks.commands.set.command):
 	<param type='string' name='disk'>
 	A VM disk specification. More than one disk can be supplied. Each
 	disk specification must separated by a space.
+	For more information on the disk format please look at the:
+	rocks add host vm help
 	</param>
 
 	<param type='string' name='disksize'>

@@ -1,4 +1,4 @@
-# $Id: __init__.py,v 1.7 2012/05/06 05:49:17 phil Exp $
+# $Id: __init__.py,v 1.8 2012/08/29 01:39:55 clem Exp $
 #
 # @Copyright@
 # 
@@ -335,23 +335,22 @@ class Command(rocks.commands.report.host.command):
 			#
 			file = os.path.join(prefix, name)
 
-			if vbd_type in [ 'file', 'tap:aio' ]:
+			if vbd_type in [ 'file', 'qcow2', 'qed' ]:
 				a = "<disk type='file' device='disk'>"
 				xmlconfig.append(a)
 
-				#if vbd_type == 'file':
-				#	a = "<driver name='file'/>"
+				if vbd_type == 'file':
+					#default
+					a = "<driver name='qemu' type='raw'/>"
+				elif vbd_type == 'qcow2':
+					a = "<driver name='qemu' type='qcow2'/>"
+				elif vbd_type == 'qed':
+					a = "<driver name='qemu' type='qed'/>"
+				xmlconfig.append(a)
 				#elif vbd_type == 'tap:aio':
 				#	a = "<driver name='tap' type='aio'/>"
-				#xmlconfig.append(a)
 
 				a = "<source file='%s'/>" % file
-				xmlconfig.append(a)
-
-				a = "<target dev='%s' bus='virtio'/>" % device
-				xmlconfig.append(a)
-
-				a = "</disk>"
 				xmlconfig.append(a)
 
 			elif vbd_type == 'phy':
@@ -361,11 +360,20 @@ class Command(rocks.commands.report.host.command):
 				a = "<source dev='/dev/%s'/>" % name
 				xmlconfig.append(a)
 
-				a = "<target dev='%s' bus='virtio'/>" % device
-				xmlconfig.append(a)
+			# we misuse the mode column to carry the driver name 
+			# that needs to should be used to expese the disk 
+			if mode == 'w':
+				# default driver
+				# legacy for backward compatibility
+				bus = 'virtio'
+			else:
+				bus = mode
 
-				a = "</disk>"
-				xmlconfig.append(a)
+			a = "<target dev='%s' bus='%s'/>" % (device, bus)
+			xmlconfig.append(a)
+
+			a = "</disk>"
+			xmlconfig.append(a)
 				
 		#
 		# the extra devices

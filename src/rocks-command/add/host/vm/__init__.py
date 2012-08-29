@@ -1,4 +1,4 @@
-# $Id: __init__.py,v 1.6 2012/05/06 05:49:15 phil Exp $
+# $Id: __init__.py,v 1.7 2012/08/29 01:39:55 clem Exp $
 # 
 # @Copyright@
 # 
@@ -55,6 +55,16 @@
 # @Copyright@
 #
 # $Log: __init__.py,v $
+# Revision 1.7  2012/08/29 01:39:55  clem
+# Rework of the disk management in kvm
+#
+# - Now it support qcow2 format (default is still raw
+#
+# - Now it is also possible to specify the device used to
+#   expose the disk inside the virtual machine
+#
+# - added some docs on the new disk string format
+#
 # Revision 1.6  2012/05/06 05:49:15  phil
 # Copyright Storm for Mamba
 #
@@ -287,7 +297,17 @@ class Command(rocks.commands.HostArgumentProcessor, rocks.commands.add.command):
 	
 	<param type='string' name='disk'>
 	A disk specification for this VM.
-	The default is: file:/&lt;largest-partition-on-physical-node&gt;/kvm/disks/&lt;vm-name&gt;.hda,hda,w
+	The fist part of the disk is a string used to specify the format of the disk on the domain 0:
+	file is used for raw file format, qcow2 for the qcow2 file fomat, and phy for a physical device
+	The second part of the disk string is a path to the location of the disk on the system up to the 
+	first comma (,). 
+	The third part is used to indicate the name under which the disk is exposed to the guest OS. 
+	The actual device name specified is not guaranteed to map to the device name in the guest OS. 
+	Treat it as a device ordering hint.
+	The forth part indicate the type of disk device to emulate valid values are "virtio" (default), 
+	"ide", "scsi".
+
+	The default is: file:/&lt;largest-partition-on-physical-node&gt;/kvm/disks/&lt;vm-name&gt;.vda,vda,virtio
 	</param>
 
 	<param type='string' name='disksize'>
@@ -693,9 +713,9 @@ class Command(rocks.commands.HostArgumentProcessor, rocks.commands.add.command):
 
 			vbd_type = 'file'
 			prefix = vm.getLargestPartition(host)
-			device = 'hda'
+			device = 'vda'
 			name = '%s.%s' % (nodename, device)
-			mode = 'w'
+			mode = 'virtio'
 
 			if not prefix:
 				self.abort('could not find a partition on '

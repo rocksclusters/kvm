@@ -90,7 +90,7 @@ if hostname == None:
 #
 # parameters from the config file that pertain to disks
 #
-vmParameters = { 'disk' : [], 'disksize' : [] }
+vmParameters = { 'disk' : [], 'disksize' : [], 'disktype' : [] }
 
 
 
@@ -158,12 +158,15 @@ for vbd_type,prefix,name,device,mode,size in disks:
 	#
 	file = os.path.join(prefix, name)
 
-	if vbd_type in [ 'file', 'tap:aio' ]:
+	if vbd_type in [ 'file', 'tap:aio', 'qcow2', 'qed' ]:
 		vmParameters['disk'].append(file)
 		vmParameters['disksize'].append(int(size) * 1000 * 1000 * 1000)
+		vmParameters['disktype'].append(vbd_type)
 	elif vbd_type == 'phy':
 		vmParameters['disk'].append('/dev/%s' % name)
 		vmParameters['disksize'].append(0)
+		vmParameters['disktype'].append(vbd_type)
+
 
 
 #print "VM params: ", vmParameters
@@ -182,6 +185,7 @@ except:
 i = 0
 for diskfile in vmParameters['disk']:
 	if not os.path.exists(diskfile):
+		# make the directories
 		if not os.path.exists(os.path.dirname(diskfile)):
 			os.makedirs(os.path.dirname(diskfile), 0700)
 		if kvm:
@@ -190,10 +194,16 @@ for diskfile in vmParameters['disk']:
 			cmd = "chown qemu " + os.path.dirname(diskfile)
 			os.system(cmd)
 
-		cmd = 'dd if=/dev/zero of=%s bs=1 count=1 ' % diskfile
-		cmd += 'seek=%d ' % (vmParameters['disksize'][i] - 1)
-		cmd += '> /dev/null 2>&1'
-		os.system(cmd)
+		if vmParameters['disktype'][i] in ['file', 'tap:aio']:
+			cmd = 'dd if=/dev/zero of=%s bs=1 count=1 ' % diskfile
+			cmd += 'seek=%d ' % (vmParameters['disksize'][i] - 1)
+			cmd += '> /dev/null 2>&1'
+			os.system(cmd)
+		elif vmParameters['disktype'][i] == 'qcow2':
+			cmd = 'qemu-img create -f qcow2 %s %s' % \
+				(diskfile, vmParameters['disksize'][i])
+			os.system(cmd)
+
 		if kvm:
 			#qemu system we need to change file ownership
 			cmd = "chown qemu:qemu " + str(diskfile)

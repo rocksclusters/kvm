@@ -1,5 +1,5 @@
 <!--
-$Id: appendix.sgml,v 1.3 2012/10/02 01:59:50 clem Exp $
+$Id: appendix.sgml,v 1.4 2012/12/06 21:05:25 clem Exp $
 
 Appendix for Copyright and License notices
 
@@ -52,6 +52,25 @@ Nvidia MCP77 integrated Ethernet Controller does not handle properly vlan tagged
 so virtual clusters will not work on this hardware.
 </para>
 </listitem>
+
+<listitem>
+<para>
+We have found that when a virtual frontend and a virutal compute node run on the same 
+physical node it is necessary to disable tx checksumming offload on the eth0 in order 
+to properly install the compute node. 
+If during PXE boot compute node fails with "Connection timed out" error message run the 
+following command on the frontend:
+</para>
+<screen>
+ethtool -K eth0 tx off
+</screen>
+<para>
+To make this change persistent after a reboot add that line in /etc/rc.d/rc.local of 
+your fronend.
+</para>
+</listitem>
+
+
 
 <listitem>
 <para>

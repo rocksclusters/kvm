@@ -1,4 +1,4 @@
-# $Id: __init__.py,v 1.9 2012/11/27 00:49:09 phil Exp $
+# $Id: __init__.py,v 1.10 2013/01/30 19:27:35 clem Exp $
 #
 # @Copyright@
 # 
@@ -295,7 +295,39 @@ class Command(rocks.commands.report.host.command):
 		for mac, subnetid, vlanid in macs:
 			# allow VMs to have virtual and VLAN interfaces
 			if mac is not None:
-				if vlanid :
+				# we need to understand if it is a directly attached interface 
+				# (macvtap) or a bridged interface 
+				#
+				# if it is directly attached there should be an interface 
+				# named vlan<vlanid> if it's bridged there should be an 
+				# interface on the vlanid with an IP address or not vlanID
+				# 
+				bridged = False
+				if not vlanid :
+					bridged = True
+				else:
+					rows = self.db.execute("""select net.device, net.ip
+						from networks net, nodes n
+						where net.node = n.id and
+						n.name = '%s' and net.vlanid = %d""" % 
+						(physhost, vlanid))
+	
+					if rows  > 1 :
+						slef.abort("There are too many interfaces defined on %s with vlan %d" %
+							(physhost, vlanid))
+	
+					if rows == 0 :
+						slef.abort("There no interface defined on %s with vlan %d" %
+							(physhost, vlanid))
+	
+					physDevName, physDevIP = self.db.fetchone()
+
+					if physDevIP == None and 'vlan' in physDevName :
+						bridged = False
+					else:
+						bridged = True
+
+				if not bridged:
 					xmlconfig.append("  <interface type='direct'>")
 					dev = self.getBridgeDevName(physhost, subnetid, vlanid)
 					xmlconfig.append("    <source dev='p%s' mode='bridge'/>" % dev )

@@ -37,7 +37,13 @@ All rights reserved. Rocks(tm) v4.3 www.rocksclusters.org
 <package>rocks-command-kvm</package>
 <package>gnutls-utils</package>
 
-
+<!-- Packages for the CentOS 5 version -->
+<package cond="rocks_version_major == 5">etherboot-roms-kvm</package>
+<package cond="rocks_version_major == 5">etherboot-zroms-kvm</package>
+<package cond="rocks_version_major == 5">kmod-kvm</package>
+<package cond="rocks_version_major == 5">kvm</package>
+<package cond="rocks_version_major == 5">kvm-qemu-img</package>
+<package cond="rocks_version_major == 5">kvm-tools</package>
 
 
 <post>

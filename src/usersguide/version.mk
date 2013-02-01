@@ -1,6 +1,6 @@
 ROLL	= kvm
 NAME	= roll-$(ROLL)-usersguide
-RELEASE	= 0
+RELEASE	= 2
 RPM.ARCH = noarch
 
 SUMMARY_COMPATIBLE	= $(VERSION)

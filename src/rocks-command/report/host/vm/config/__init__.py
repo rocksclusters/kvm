@@ -263,6 +263,19 @@ class Command(rocks.commands.report.host.command):
 		xmlconfig.append("<memory>%s</memory>" % memory)	
 		xmlconfig.append("<vcpu>%s</vcpu>" % cpus)	
 
+                # cpu_mode you can specify the capabilities of the virtual cpu
+                # host-passthrough should be the default for speed
+                cpu_mode = self.db.getHostAttr(host, 'cpu_mode')
+                cpu_match = self.db.getHostAttr(host, 'cpu_match')
+                if cpu_mode :
+                        xmlconfig.append("<cpu mode='" + cpu_mode + "'/>")
+                elif cpu_match :
+                        cpu_match_split = cpu_match.split(':', 1)
+                        xmlconfig.append("<cpu mode='" + cpu_match_split[0] + "'>")
+                        if len(cpu_match_split) > 1 :
+                                xmlconfig.append( cpu_match_split[1] )
+                        xmlconfig.append("</cpu>")
+
 		if virtType == 'hvm':
 			features = self.db.getHostAttr(host,'HVM_Features')
 			if features is None :

@@ -37,6 +37,9 @@ All rights reserved. Rocks(tm) v5.3 www.rocksclusters.org
 	ramdisk="/boot/kickstart/default/initrd.img-&rocks_version;-&arch;" \
 	args="ramdisk_size=150000 lang= devfs=nomount pxe kssendmac selinux=0 noipv6 ks=http://&Kickstart_PublicHostname;/install/sbin/kickstart.cgi ksdevice=eth1 build airboss=localhost"
 
+#set the cpu_model to pass-though this will get the most of the virtual cpu
+/opt/rocks/bin/rocks set attr cpu_mode host-passthrough
+
 </post>
 
 

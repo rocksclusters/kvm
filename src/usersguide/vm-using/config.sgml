@@ -1,0 +1,80 @@
+<section id="config" xreflabel="Configuring Virtual Machine">
+	<title>Advanced Configuration</title>
+
+<para>
+
+</para>
+
+<section>
+<title>Defining Virtual CPU Types</title>
+
+<para>
+Using the attribute <filename>cpu_mode</filename> it is now possible
+to configure a guest CPU to be as close to host CPU as possible. 
+The attribute value can have two values (which are taken from 
+<ulink url="http://libvirt.org/formatdomain.html#elementsCPU">
+Libvirt Documentation</ulink>):
+</para>
+
+<itemizedlist>
+
+<listitem>
+<para>
+host-model: The host-model mode is essentially a shortcut to copying host CPU definition from 
+capabilities XML into domain XML. Since the CPU definition is copied just before starting a 
+domain, exactly the same XML can be used on different hosts while still providing the best 
+guest CPU each host supports. Use this mode if you need to migrate virtual machine.
+It is not possible to use the cpu_match attribute described below when in this mode.
+</para>
+</listitem>
+
+
+<listitem>
+<para>
+host-passthrough: With this mode, the CPU visible to the guest should be exactly the same 
+as the host CPU even in the aspects that libvirt does not understand. Though the downside 
+of this mode is that the guest environment cannot be reproduced on different hardware.
+This is the default mode, if you don't need migration capabilities but just speed use this 
+mode.
+</para>
+</listitem>
+
+</itemizedlist>
+
+
+
+<para>
+The attribute cpu_match can be used to specify a specific topology or model type for the cpu.
+The value of the cpu_match attribute is compose of a two parts divided by a colon. The first 
+part (before the colon) is used in the attribute match of the tag cpu (see 
+<ulink url="http://libvirt.org/formatdomain.html#elementsCPU">Libvirt Documentation</ulink> 
+for more details). While the second part if present will be copied between the two cpu tags.
+So for example if the cpu_match attribute value is: 
+</para>
+
+<screen>
+<![CDATA[
+exact: <model fallback='allow'>core2duo</model><vendor>Intel</vendor><topology sockets='1' cores='2'/>
+]]>
+</screen>
+
+
+<para>
+Then the xml used for libvirt will be:
+</para>
+
+
+<screen>
+<![CDATA[
+<cpu mode='exact'>
+  <model fallback='allow'>core2duo</model><vendor>Intel</vendor><topology sockets='1' cores='2'/>
+</cpu>
+]]>
+</screen>
+
+
+</section>
+
+
+</section>
+

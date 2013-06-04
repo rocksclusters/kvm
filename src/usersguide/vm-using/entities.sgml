@@ -4,3 +4,4 @@
 <!ENTITY vm-install SYSTEM "vm-install.sgml">
 <!ENTITY pilot SYSTEM "pilot.sgml">
 <!ENTITY network SYSTEM "network.sgml">
+<!ENTITY config SYSTEM "config.sgml">

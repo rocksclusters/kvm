@@ -326,11 +326,11 @@ class Command(rocks.commands.report.host.command):
 						(physhost, vlanid))
 	
 					if rows  > 1 :
-						slef.abort("There are too many interfaces defined on %s with vlan %d" %
+						self.abort("There are too many interfaces defined on %s with vlan %d" %
 							(physhost, vlanid))
 	
 					if rows == 0 :
-						slef.abort("There no interface defined on %s with vlan %d" %
+						self.abort("There no interface defined on %s with vlan %d" %
 							(physhost, vlanid))
 	
 					physDevName, physDevIP = self.db.fetchone()

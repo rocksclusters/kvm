@@ -58,7 +58,7 @@
 
 ARCH=$(shell ../_arch)
 
-SRCDIRS = `find . -maxdepth 1 -type d -not -name CVS -not -name .`
+SRCDIRS = `find . -maxdepth 1 -type d -not -name CVS -not -name . -not -name pilot`
 
 SRCDIRS += ../../xen/src/airboss
 default:	rpm

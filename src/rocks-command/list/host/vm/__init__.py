@@ -136,7 +136,7 @@
 
 import os.path
 import rocks.commands
-import rocks.vm
+import rocks.vmextended
 
 import sys
 sys.path.append('/usr/lib64/python2.' + str(sys.version_info[1]) + '/site-packages')
@@ -169,48 +169,6 @@ class Command(rocks.commands.list.host.command):
 	</example>
 	"""
 
-	def getStatus(self, physhost, host):
-		try:
-	                import rocks.vmconstant
-			hipervisor = libvirt.open( rocks.vmconstant.connectionURL % physhost)
-		except:
-			return 'nostate'
-	
-		found = 0
-		for id in hipervisor.listDomainsID():
-			if id == 0:
-				#
-				# skip dom0
-				#
-				continue
-			
-			domU = hipervisor.lookupByID(id)
-			if domU.name() == host:
-				found = 1
-				break
-
-		state = 'nostate'
-
-		if found:
-			status = domU.info()[0]	
-
-			if status == libvirt.VIR_DOMAIN_NOSTATE:
-				state = 'nostate'
-			elif status == libvirt.VIR_DOMAIN_RUNNING or \
-					status == libvirt.VIR_DOMAIN_BLOCKED:
-				state = 'active'
-			elif status == libvirt.VIR_DOMAIN_PAUSED:
-				state = 'paused'
-			elif status == libvirt.VIR_DOMAIN_SHUTDOWN:
-				state = 'shutdown'
-			elif status == libvirt.VIR_DOMAIN_SHUTOFF:
-				state = 'shutoff'
-			elif status == libvirt.VIR_DOMAIN_CRASHED:
-				state = 'crashed'
-
-		return state
-
-
 	def run(self, params, args):
 		(showdisks, showstatus) = self.fillParams( [
 			('showdisks', 'n'), 
@@ -221,6 +179,8 @@ class Command(rocks.commands.list.host.command):
 		showstatus = self.str2bool(showstatus)
 
 		hosts = self.getHostnames(args)
+
+		vmlib = rocks.vmextended.VMextended(self.db)
 
 		self.beginOutput()
 
@@ -313,8 +273,7 @@ class Command(rocks.commands.list.host.command):
 
 				info = (slice, mem, cpus, mac, physhost, virtType)
 				if showstatus:
-					info += (self.getStatus(physhost,
-						host),)
+					info += (vmlib.getStatus(host, physhost),)
 				if showdisks:
 					info += (disk, disksize)
 

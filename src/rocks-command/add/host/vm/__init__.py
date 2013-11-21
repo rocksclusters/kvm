@@ -236,6 +236,33 @@ import rocks.commands
 import rocks.vm
 
 
+
+def parseDisk(disk):
+	"""parse a string representing a disk and returns a touple with
+	the various components. Used by rocks set host vm."""
+
+	d = disk.split(',')
+	if len(d) != 3:
+                rocks.commands.Abort('Invalid disk specification.'
+				' Please see rocks add host vm help.')
+
+	device = d[1]
+	mode = d[2]
+
+	e = d[0].split(':')
+	vbd_type = ':'.join(e[0:-1])
+
+	if vbd_type == 'phy':
+		prefix = ''
+		name = e[-1]	# allows for '/' in name for LVM
+	else:
+		prefix = os.path.dirname(e[-1])
+		name = os.path.basename(e[-1])
+
+	return (vbd_type, prefix, name, device, mode)
+
+
+
 class Command(rocks.commands.HostArgumentProcessor, rocks.commands.add.command):
 	"""
 	Add a VM specification to the database.
@@ -464,22 +491,7 @@ class Command(rocks.commands.HostArgumentProcessor, rocks.commands.add.command):
 		#
 		# parse the disk specification
 		#
-		d = disk.split(',')
-		if len(d) != 3:
-			self.abort('invalid disk specification')
-
-		device = d[1]
-		mode = d[2]
-
-		e = d[0].split(':')
-		vbd_type = ':'.join(e[0:-1])
-
-		if vbd_type == 'phy':
-			prefix = ''
-			name = e[-1]	# allows for '/' in name for LVM
-		else:
-			prefix = os.path.dirname(e[-1])
-			name = os.path.basename(e[-1])
+		(vbd_type, prefix, name, device, mode) = parseDisk(disk)
 
 		self.db.execute("""insert into vm_disks (vm_node, vbd_type,
 			prefix, name, device, mode, size)

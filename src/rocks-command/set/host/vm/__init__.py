@@ -135,6 +135,7 @@
 
 import os.path
 import rocks.commands
+import rocks.commands.add.host.vm
 
 
 class Command(rocks.commands.HostArgumentProcessor, rocks.commands.set.command):
@@ -177,28 +178,6 @@ class Command(rocks.commands.HostArgumentProcessor, rocks.commands.set.command):
 	Change the memory allocation for VM compute-0-0-0 to 4 GB.
 	</example>
 	"""
-
-	def addDiskSpec(self, vmnodeid, disk, disksize):
-		#
-		# parse the disk specification
-		#
-		d = disk.split(',')
-		if len(d) != 3:
-			self.abort('invalid disk specification: "%s"' % disk)
-
-		device = d[1]
-		mode = d[2]
-
-		e = d[0].split(':')
-		vbd_type = ':'.join(e[0:-1])
-		prefix = os.path.dirname(e[-1])
-		name = os.path.basename(e[-1])
-
-		self.db.execute("""insert into vm_disks (vm_node, vbd_type,
-			prefix, name, device, mode, size)
-			values (%s, '%s', '%s', '%s', '%s', '%s', %s)""" %
-			(vmnodeid, vbd_type, prefix, name, device, mode,
-			disksize))
 
 
 	def run(self, params, args):
@@ -330,7 +309,17 @@ class Command(rocks.commands.HostArgumentProcessor, rocks.commands.set.command):
 				else:
 					dsize = ds[index]
 
-				self.addDiskSpec(vmnodeid, d, dsize)
+				#
+				# parse the disk specification
+				#
+				(vbd_type, prefix, name, device, mode) = \
+					rocks.commands.add.host.vm.parseDisk(d)
+
+				self.db.execute("""insert into vm_disks (vm_node, vbd_type,
+					prefix, name, device, mode, size)
+					values (%s, '%s', '%s', '%s', '%s', '%s', %s)""" %
+					(vmnodeid, vbd_type, prefix, name, device, mode,
+					dsize))
 
 				index += 1
 				

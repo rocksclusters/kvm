@@ -1,12 +1,11 @@
-#
-# $Id: Makefile,v 1.6 2012/11/27 00:49:07 phil Exp $
-#
+#!/opt/rocks/bin/python
+# 
 # @Copyright@
 # 
 # 				Rocks(r)
-# 		         www.rocksclusters.org
-# 		         version 5.6 (Emerald Boa)
-# 		         version 6.1 (Emerald Boa)
+# 			 www.rocksclusters.org
+# 			 version 5.6 (Emerald Boa)
+# 			 version 6.1 (Emerald Boa)
 # 
 # Copyright (c) 2000 - 2013 The Regents of the University of California.
 # All rights reserved.	
@@ -55,25 +54,94 @@
 # 
 # @Copyright@
 #
-#
 
-PKGROOT         = /opt/rocks
-REDHAT.ROOT     = $(CURDIR)/../../
-# ROCKSROOT       = ../../../../..
--include $(ROCKSROOT)/etc/Rules.mk
-include Rules.mk
+import os
+import rocks.vm
 
-build:
 
-install::
-	mkdir -p $(ROOT)/$(PY.ROCKS)/rocks/commands/
-	mkdir -p $(ROOT)/$(PKGROOT)/bin
-	find ./*/ -name "*.py" | \
-		cpio -pduv $(ROOT)/$(PY.ROCKS)/rocks/commands/
-	install -m444 vmconstant.py $(ROOT)/$(PY.ROCKS)/rocks/
-	install -m444 vmextended.py $(ROOT)/$(PY.ROCKS)/rocks/
-	install -m755 rocks-create-vm-disks $(ROOT)/$(PKGROOT)/bin
-	find $(ROOT)/$(PY.ROCKS)/rocks/commands -name "*.py" | awk \
-		'{ print "\nRollName = \"$(ROLL)\"" >> $$1; }'
-	find $(ROOT) -type d -exec chmod a+rx {} \;
+import sys
+sys.path.append('/usr/lib64/python2.' + str(sys.version_info[1]) + '/site-packages')
+sys.path.append('/usr/lib/python2.' + str(sys.version_info[1]) + '/site-packages')
+import libvirt
+
+
+class VMextended(rocks.vm.VM):
+	""" This class should contain general functions needed when dealing 
+	with virtual machines. It extends rocks.vm.VM because that file is part
+	of the base roll while this is part of the KVM roll """
+
+	# we have self.db inherited from the superclass
+	# self.db = db
+
+
+
+	def getStatus(self, host, physhost=None):
+		if physhost == None:
+			#
+			# find the physical host for this virtual host
+			#
+			rows = self.db.execute("""select vn.physnode from
+				vm_nodes vn, nodes n where n.name = '%s'
+				and n.id = vn.node""" % (host))
+		
+			if rows == 1:
+				physnodeid, = self.db.fetchone()
+			else:
+				return 'nostate-error'
+		
+			rows = self.db.execute("""select name from nodes where
+				id = %s""" % (physnodeid))
+		
+			if rows == 1:
+				physhost, = self.db.fetchone()
+			else:
+				return 'nostate-error'
+
+		try:
+			import rocks.vmconstant
+			hipervisor = libvirt.open(rocks.vmconstant.connectionURL % physhost)
+		except:
+			import traceback
+			traceback.print_exc()
+			return 'nostate-error'
+
+		found = 0
+		for id in hipervisor.listDomainsID():
+			if id == 0:
+				#
+				# skip dom0
+				#
+				continue
+
+			domU = hipervisor.lookupByID(id)
+			if domU.name() == host:
+				found = 1
+				break
+
+		state = 'nostate'
+
+		if found:
+			status = domU.info()[0]
+
+			if status == libvirt.VIR_DOMAIN_NOSTATE:
+				state = 'nostate'
+			elif status == libvirt.VIR_DOMAIN_RUNNING or \
+					status == libvirt.VIR_DOMAIN_BLOCKED:
+				state = 'active'
+			elif status == libvirt.VIR_DOMAIN_PAUSED:
+				state = 'paused'
+			elif status == libvirt.VIR_DOMAIN_SHUTDOWN:
+				state = 'shutdown'
+			elif status == libvirt.VIR_DOMAIN_SHUTOFF:
+				state = 'shutoff'
+			elif status == libvirt.VIR_DOMAIN_CRASHED:
+				state = 'crashed'
+
+		return state
+
+
+
+
+
+
 

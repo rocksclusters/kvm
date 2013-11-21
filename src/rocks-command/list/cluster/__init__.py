@@ -96,13 +96,8 @@
 # list physical and virtual clusters
 #
 
-import rocks.vm
+import rocks.vmextended
 import rocks.commands
-
-import sys
-sys.path.append('/usr/lib64/python2.' + str(sys.version_info[1]) + '/site-packages')
-sys.path.append('/usr/lib/python2.' + str(sys.version_info[1]) + '/site-packages')
-import libvirt
 
 class Command(rocks.commands.HostArgumentProcessor,
 	rocks.commands.list.command):
@@ -130,76 +125,6 @@ class Command(rocks.commands.HostArgumentProcessor,
 	</example>
 	"""
 
-	def getStatus(self, host):
-		#
-		# find the physical host for this virtual host
-		#
-		rows = self.db.execute("""select vn.physnode from
-			vm_nodes vn, nodes n where n.name = '%s'
-			and n.id = vn.node""" % (host))
-
-		if rows == 1:
-			physnodeid, = self.db.fetchone()
-		else:
-			return 'nostate'
-
-		rows = self.db.execute("""select name from nodes where
-			id = %s""" % (physnodeid))
-
-		if rows == 1:
-			physhost, = self.db.fetchone()
-		else:
-			return 'nostate'
-
-		try:
-			import rocks.vmconstant
-			hipervisor = libvirt.open( rocks.vmconstant.connectionURL % physhost)
-		except:
-			return 'nostate'
-	
-		found = 0
-		for id in hipervisor.listDomainsID():
-			if id == 0:
-				#
-				# skip dom0
-				#
-				continue
-			
-			domU = hipervisor.lookupByID(id)
-			if domU.name() == host:
-				found = 1
-				break
-
-		state = 'nostate'
-
-		if found:
-			status = domU.info()[0]	
-
-			if status == libvirt.VIR_DOMAIN_NOSTATE:
-				state = 'nostate'
-			elif status == libvirt.VIR_DOMAIN_RUNNING or \
-					status == libvirt.VIR_DOMAIN_BLOCKED:
-				state = 'active'
-			elif status == libvirt.VIR_DOMAIN_PAUSED:
-				state = 'paused'
-			elif status == libvirt.VIR_DOMAIN_SHUTDOWN:
-				state = 'shutdown'
-			elif status == libvirt.VIR_DOMAIN_SHUTOFF:
-				state = 'shutoff'
-			elif status == libvirt.VIR_DOMAIN_CRASHED:
-				state = 'crashed'
-
-		return state
-
-
-	def getClientInfo(self, host, showstatus):
-		info = (host, 'VM')
-
-		if showstatus:
-			info += (self.getStatus(host),)
-		
-		return info
-
 
 	def run(self, params, args):
 		(showstatus, ) = self.fillParams( [ ('status', 'n') ])
@@ -216,7 +141,7 @@ class Command(rocks.commands.HostArgumentProcessor,
 		else:
 			hosts = frontends
 
-		vm = rocks.vm.VM(self.db)
+		vm = rocks.vmextended.VMextended(self.db)
 		self.beginOutput()
 
 		for frontend in hosts:
@@ -237,7 +162,7 @@ class Command(rocks.commands.HostArgumentProcessor,
 			if vm.isVM(frontend):
 				info = ('', 'VM')
 				if showstatus:
-					info += (self.getStatus(frontend),)
+					info += (vm.getStatus(frontend),)
 		
 				self.addOutput(fqdn, info)
 
@@ -267,8 +192,10 @@ class Command(rocks.commands.HostArgumentProcessor,
 					if client != frontend and \
 						vm.isVM(client):
 
-						info = self.getClientInfo(
-							client, showstatus)
+						info = (client, 'VM')
+
+						if showstatus:
+							info += (vm.getStatus(client),)
 		
 						self.addOutput('', info)
 			else:

@@ -217,7 +217,7 @@ class Command(rocks.commands.list.host.command):
 			# get the VM configuration parameters
 			#
 			rows = self.db.execute("""select vn.id, vn.mem,
-				n.cpus, vn.slice, vn.virt_type 
+				n.cpus, vn.slice, vn.virt_type, vn.cdrom_path
 				from nodes n, vm_nodes vn
 				where vn.node = n.id and n.name = '%s'""" %
 				host)
@@ -225,7 +225,7 @@ class Command(rocks.commands.list.host.command):
 			if rows < 1:
 				continue
 
-			for vmnodeid, mem, cpus, slice, virt_type in self.db.fetchall():
+			for vmnodeid, mem, cpus, slice, virt_type, cdrom in self.db.fetchall():
 				if not vmnodeid:
 					continue
 
@@ -275,7 +275,7 @@ class Command(rocks.commands.list.host.command):
 				if showstatus:
 					info += (vmlib.getStatus(host, physhost),)
 				if showdisks:
-					info += (disk, disksize)
+					info += (disk, disksize, cdrom)
 
 				self.addOutput(host, info)
 
@@ -307,7 +307,7 @@ class Command(rocks.commands.list.host.command):
 		if showstatus:
 			header.append('status')
 		if showdisks:
-			header += [ 'disk', 'disksize' ]
+			header += [ 'disk', 'disksize', 'cdrom']
 
 		self.endOutput(header)
 

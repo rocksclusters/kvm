@@ -140,8 +140,18 @@ class VMextended(rocks.vm.VM):
 		return state
 
 
+	def getCDROM(self, hostname):
+		"""return a string with the path of the CDROM if one was defined
+		None otherwise"""
 
+		rows = self.db.execute("""select vn.cdrom_path from
+			vm_nodes vn, nodes n where n.name = '%s'
+			and n.id = vn.node""" % (hostname))
 
+		if rows == 1:
+			cdrom, = self.db.fetchone()
+			return cdrom
 
-
+		else:
+			return None
 

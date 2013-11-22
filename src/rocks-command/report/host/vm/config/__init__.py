@@ -56,8 +56,10 @@
 #
 
 import os
+import stat
 import tempfile
 import rocks.commands
+import rocks.vmextended
 import re
 
 import sys
@@ -288,7 +290,6 @@ class Command(rocks.commands.report.host.command):
 		# configure the devices
 		#
 		xmlconfig.append("<devices>")
-		#TODO check if 32bit path is different
 		xmlconfig.append("  <emulator>/usr/libexec/qemu-kvm</emulator>")
 
 		#
@@ -372,6 +373,7 @@ class Command(rocks.commands.report.host.command):
 		index = 0
 		bootdisk = None
 		bootdevice = None
+		idedevices = []
 		for vbd_type,prefix,name,device,mode,size in disks:
 			#
 			# if the disk specification is a 'regular' file, then
@@ -415,11 +417,38 @@ class Command(rocks.commands.report.host.command):
 				bus = mode
 
 			a = "<target dev='%s' bus='%s'/>" % (device, bus)
+			if device == 'ide':
+				idedevices.append(device)
 			xmlconfig.append(a)
 
 			a = "</disk>"
 			xmlconfig.append(a)
-				
+
+		#
+		# check for a CDROM
+		#
+		vm = rocks.vmextended.VMextended(self.db)
+		cdrom_path = vm.getCDROM(host)
+		if cdrom_path:
+			xmlconfig.append("<disk type='file' device='cdrom'>")
+			xmlconfig.append("  <driver name='qemu' type='raw'/>")
+			if stat.S_ISBLK(os.stat(cdrom_path).st_mode):
+				# block device
+				xmlconfig.append("  <source dev='%s'/>" % cdrom_path)
+			elif stat.S_ISREG(os.stat(cdrom_path).st_mode):
+				xmlconfig.append("  <source file='%s'/>" % cdrom_path)
+			else:
+				self.abort("cdrom does not point to a valid path. "
+					"Change it with rocks set host vm cdrom")
+			# find the ide device
+			for i in ['a', 'b', 'c', 'd']:
+				device = 'hd' + i
+				if device not in idedevices:
+					break
+			xmlconfig.append("  <target dev='%s' bus='ide'/>"% device)
+			xmlconfig.append("  <readonly/>")
+			xmlconfig.append("</disk>")
+
 		#
 		# the extra devices
 		#

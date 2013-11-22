@@ -30,6 +30,7 @@ CREATE TABLE vm_nodes (
 	Mem		int(11) NOT NULL default '1024',
 	Slice		int(11) NOT NULL default '0',
 	Virt_Type	varchar(64) default NULL,
+	cdrom_path      varchar(512) default '',
 	PRIMARY KEY (ID)
 ) TYPE=MyISAM;
 

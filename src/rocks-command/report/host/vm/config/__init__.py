@@ -122,8 +122,10 @@ class Command(rocks.commands.report.host.command):
 					returnDeviceName = '%s.%d' % (dev, vlanid)
 		return returnDeviceName
 
-	def reportBootLoader(self,host,xmlconfig,virtType):
+
+	def reportBootLoader(self, host, xmlconfig, virtType, cdrom):
 		"""first section of the libvirt xml with the startup params"""
+
 		xmlconfig.append("<domain type='kvm'>")
 		xmlconfig.append("<name>%s</name>" % host)
 		xmlconfig.append("<os>")
@@ -204,14 +206,20 @@ class Command(rocks.commands.report.host.command):
 			#we boot the machine as if normal hardware
 			xmlconfig.append("  <boot dev='network'/>")
 			xmlconfig.append("  <boot dev='hd'/>")
+			if cdrom :
+				xmlconfig.append("  <boot dev='cdrom'/>")
 			xmlconfig.append("  <bootmenu enable='yes'/>")
 			xmlconfig.append("</os>")
 
 
 	def getXMLconfig(self, physhost, host):
+
 		xmlconfig = []
+		vm = rocks.vmextended.VMextended(self.db)
+		cdrom_path = vm.getCDROM(host)
 		virtType = self.command('report.host.vm.virt_type', [ host,]).strip()
-		self.reportBootLoader(host,xmlconfig,virtType)
+		self.reportBootLoader(host,xmlconfig,virtType, cdrom_path)
+
 		#
 		# get the VM parameters
 		#
@@ -402,8 +410,6 @@ class Command(rocks.commands.report.host.command):
 		#
 		# check for a CDROM
 		#
-		vm = rocks.vmextended.VMextended(self.db)
-		cdrom_path = vm.getCDROM(host)
 		if cdrom_path:
 			xmlconfig.append("<disk type='file' device='cdrom'>")
 			xmlconfig.append("  <driver name='qemu' type='raw'/>")

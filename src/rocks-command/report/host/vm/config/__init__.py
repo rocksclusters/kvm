@@ -82,33 +82,6 @@ class Command(rocks.commands.report.host.command):
 
 	"""
 
-        def getBootProfile(self, host, profile):
-                """Return what's defined by the named profile, Return
-                        string versions, empty strings if DB has Null entries"""
-
-                kernel = ''
-                ramdisk =  ''
-                bootargs = ''
-                if not profile:
-                        return kernel, ramdisk, bootargs
-
-                # Read the profile
-                rows = self.db.execute("""select kernel, ramdisk, args
-                        from bootaction where action = '%s' """ % profile)
-                if rows > 0:
-                        kernel, ramdisk, bootargs = self.db.fetchone()
-
-                if not kernel:
-                        kernel = ''
-                if not ramdisk:
-                        ramdisk = ''
-                if not bootargs:
-                        bootargs = ''
-
-                return kernel, ramdisk, bootargs
-
-
-
 	def getBridgeDevName(self, host, subnetid, vlanid):
 		returnDeviceName = None
 

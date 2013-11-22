@@ -404,8 +404,10 @@ class Command(rocks.commands.report.host.command):
 				a = "<disk type='block' device='disk'>"
 				xmlconfig.append(a)
 
-				a = "<source dev='/dev/%s'/>" % name
+				a = "<source dev='%s'/>" % file
 				xmlconfig.append(a)
+			else:
+				self.abort("Disk type is not valid. Please see rocks add host vm help.")
 
 			# we misuse the mode column to carry the driver name 
 			# that needs to should be used to expese the disk 

@@ -259,6 +259,16 @@ class Command(rocks.commands.report.host.command):
                                 xmlconfig.append( cpu_match_split[1] )
                         xmlconfig.append("</cpu>")
 
+		# for cpu pinning
+		attribute = self.db.getHostAttr(host, 'kvm_cpu_pinning')
+		if attribute == "pin_all":
+			xmlconfig.append("<cputune>")
+			for i in range(cpus):
+			        xmlconfig.append("  <vcpupin vcpu=\"%d\" cpuset=\"%d\"/>" % (i, i))
+			xmlconfig.append("</cputune>")
+		elif attribute:
+			xmlconfig.append(attribute)
+
 		if virtType == 'hvm':
 			features = self.db.getHostAttr(host,'HVM_Features')
 			if features is None :

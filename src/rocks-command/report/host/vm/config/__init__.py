@@ -431,6 +431,18 @@ class Command(rocks.commands.report.host.command):
 			xmlconfig.append("</disk>")
 
 		#
+		# additional devices set with attributes
+		#
+		i = 0
+		while True:
+			attribute = self.db.getHostAttr(host, 'kvm_device_%d' % i)
+			i = i + 1
+			if attribute :
+				xmlconfig.append(attribute)
+			else:
+				break
+
+		#
 		# the extra devices
 		#
 		xmlconfig.append("<graphics type='vnc' port='-1'/>")

@@ -24,7 +24,13 @@ All rights reserved. Rocks(tm) v5.3 www.rocksclusters.org
 /opt/rocks/bin/rocks add appliance vm-container \
 	membership='VM Container' node='client' graph='default' public='yes'
 
+# not really used at the moment
 /opt/rocks/bin/rocks set appliance attr vm-container kvm true
+
+# this can be used to disable kvm bridging on a frontend with kvm
+# in case the user does not want to have VM stuff on the frontend
+/opt/rocks/bin/rocks set appliance attr vm-container kvm_networking true
+/opt/rocks/bin/rocks set host attr &Kickstart_PublicHostname; kvm_networking true
 
 /opt/rocks/bin/rocks add appliance hosted-vm \
 	membership='Hosted VM' public='no'

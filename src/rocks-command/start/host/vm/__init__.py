@@ -276,6 +276,11 @@ class Command(rocks.commands.start.host.command):
 			domain = hipervisor.defineXML(xmlconfig)
 			domain.create()
 
+		if domain and \
+			self.db.getHostAttr(host, 'kvm_autostart') == 'true':
+			# let's set autostart
+			ret = domain.setAutostart(True)
+
                 #lets check the installAction
                 installAction = None
                 rows = self.db.execute("""select installaction

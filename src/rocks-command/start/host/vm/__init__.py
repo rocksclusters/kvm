@@ -228,13 +228,27 @@ class Command(rocks.commands.start.host.command):
 		# the disk file doesn't exist yet.
 		#
 		libvirt.registerErrorHandler(handler, 'context')
+		try:
+			# undefine old domain if any
+			dom = hipervisor.lookupByName(host)
+			# but before check that it is not running
+			if dom.info()[0] == libvirt.VIR_DOMAIN_RUNNING or \
+                                        dom.info()[0] == libvirt.VIR_DOMAIN_BLOCKED:
+				self.abort("The host %s is already running." % host)
+			if dom.info()[0] == libvirt.VIR_DOMAIN_PAUSED:
+				self.abort("The host %s is puased. "
+					"You need to resume it (rocks resume host vm)."
+					% host)
+			dom.undefine()
+		except libvirt.libvirtError, m:
+			# that's ok the domain is not defined
+			pass
+
 
 		retry = 0
-
-		virtType = self.command('report.host.vm.virt_type', [ host,]).strip()
-
 		try:
-			hipervisor.createLinux(xmlconfig, 0)
+			domain = hipervisor.defineXML(xmlconfig)
+			domain.create()
 
 		except libvirt.libvirtError, m:
 			str = '%s' % m
@@ -256,9 +270,11 @@ class Command(rocks.commands.start.host.command):
 				retry = 1
 			else:
 				print str
+				raise
 
 		if retry:
-			hipervisor.createLinux(xmlconfig, 0)
+			domain = hipervisor.defineXML(xmlconfig)
+			domain.create()
 
                 #lets check the installAction
                 installAction = None

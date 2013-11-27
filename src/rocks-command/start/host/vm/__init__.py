@@ -203,6 +203,8 @@ def handler(ctxt, err):
 class Command(rocks.commands.start.host.command):
 	"""
 	Boots a VM slice on a physical node.
+	If kvm_autostart == true make the VM start automatically when
+	the physical container boot.
 
 	<arg type='string' name='host' repeat='1'>
 	A list of one or more VM host names.

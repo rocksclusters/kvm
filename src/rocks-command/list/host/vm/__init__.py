@@ -196,21 +196,9 @@ class Command(rocks.commands.list.host.command):
 			#
 			# get the physical node that houses this VM
 			#
-			rows = self.db.execute("""select vn.physnode from
-				vm_nodes vn, nodes n where n.name = '%s'
-				and n.id = vn.node""" % (host))
+			(physnodeid, physhost) = vmlib.getPhysNode(host)
 
-			if rows == 1:
-				physnodeid, = self.db.fetchone()
-			else:
-				continue
-
-			rows = self.db.execute("""select name from nodes where
-				id = %s""" % (physnodeid))
-
-			if rows == 1:
-				physhost, = self.db.fetchone()
-			else:
+			if not physhost or not physnodeid:
 				continue
 
 			#

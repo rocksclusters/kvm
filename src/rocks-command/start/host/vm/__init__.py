@@ -179,6 +179,7 @@
 import os
 import tempfile
 import rocks.commands
+import rocks.vmextended
 import re
 
 import sys
@@ -307,21 +308,10 @@ class Command(rocks.commands.start.host.command):
 			# the name of the physical host that will boot
 			# this VM host
 			#
-			rows = self.db.execute("""select vn.physnode from
-				vm_nodes vn, nodes n where n.name = '%s'
-				and n.id = vn.node""" % (host))
+			vm = rocks.vmextended.VMextended(self.db)
+			(physnodeid, physhost) = vm.getPhysNode(host)
 
-			if rows == 1:
-				physnodeid, = self.db.fetchone()
-			else:
-				continue
-
-			rows = self.db.execute("""select name from nodes where
-				id = %s""" % (physnodeid))
-
-			if rows == 1:
-				physhost, = self.db.fetchone()
-			else:
+			if not physhost or not physnodeid:
 				continue
 
 			#

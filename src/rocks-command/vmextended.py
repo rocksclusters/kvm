@@ -74,27 +74,36 @@ class VMextended(rocks.vm.VM):
 	# self.db = db
 
 
+	def getPhysNode(self, host):
+		"""given a hostname it returns its physical node id"""
+
+		rows = self.db.execute("""select vn.physnode
+			from vm_nodes vn, nodes n
+			where n.name = '%s' and n.id = vn.node"""
+			% (host))
+
+		if rows == 1:
+			physnodeid, = self.db.fetchone()
+		else:
+			return (None, None)
+
+		rows = self.db.execute("""select name from nodes where
+			id = %s""" % (physnodeid))
+
+		if rows == 1:
+			physhost, = self.db.fetchone()
+		else:
+			return (None, None)
+
+		return (physnodeid, physhost)
+
 
 	def getStatus(self, host, physhost=None):
+		"""given a virtual hostname it returns its status as a string"""
+
 		if physhost == None:
-			#
-			# find the physical host for this virtual host
-			#
-			rows = self.db.execute("""select vn.physnode from
-				vm_nodes vn, nodes n where n.name = '%s'
-				and n.id = vn.node""" % (host))
-		
-			if rows == 1:
-				physnodeid, = self.db.fetchone()
-			else:
-				return 'nostate-error'
-		
-			rows = self.db.execute("""select name from nodes where
-				id = %s""" % (physnodeid))
-		
-			if rows == 1:
-				physhost, = self.db.fetchone()
-			else:
+			(physnodeid, physhost) = self.getPhysNode(host)
+			if not physhost:
 				return 'nostate-error'
 
 		try:

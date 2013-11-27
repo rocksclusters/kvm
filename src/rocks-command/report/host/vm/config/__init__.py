@@ -215,8 +215,7 @@ class Command(rocks.commands.report.host.command):
 	def getXMLconfig(self, physhost, host):
 
 		xmlconfig = []
-		vm = rocks.vmextended.VMextended(self.db)
-		cdrom_path = vm.getCDROM(host)
+		cdrom_path = self.vm.getCDROM(host)
 		virtType = self.command('report.host.vm.virt_type', [ host,]).strip()
 		self.reportBootLoader(host,xmlconfig,virtType, cdrom_path)
 
@@ -474,13 +473,9 @@ class Command(rocks.commands.report.host.command):
 			#
 			# get the VM configuration (in XML format for libvirt)
 			#
-			rows = self.db.execute("""select name from nodes where
-				id=(select vn.physnode from
-				vm_nodes vn, nodes n where n.name = '%s'
-				and n.id = vn.node)""" % (host))
-			if rows == 1:
-				physhost, = self.db.fetchone()
-			else:
+			self.vm = rocks.vmextended.VMextended(self.db)
+			(physnodeid, physhost) = self.vm.getPhysNode(host)
+			if not physhost:
 				continue
 			xmlconfig = self.getXMLconfig(physhost, host)
 			self.addOutput(host, '%s' % xmlconfig)

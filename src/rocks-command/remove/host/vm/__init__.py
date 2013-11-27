@@ -112,6 +112,20 @@
 import os
 import rocks.commands
 
+import sys
+sys.path.append('/usr/lib64/python2.' + str(sys.version_info[1]) + '/site-packages')
+sys.path.append('/usr/lib/python2.' + str(sys.version_info[1]) + '/site-packages')
+import libvirt
+
+
+#
+# this function is used to suppress std output produced by libvirt
+# when the domain is non existent
+def handler(ctxt, err):
+        global errno
+        errno = err
+
+
 class Command(rocks.commands.remove.host.command):
 	"""
 	Remove the configuration info in the database for the supplied hosts.
@@ -128,7 +142,7 @@ class Command(rocks.commands.remove.host.command):
 	def run(self, params, args):
 		if not len(args):
 			self.abort('must supply at least one host')
-			
+
 		for host in self.getHostnames(args):
                 	self.runPlugins(host)
 			vmnodeid = None
@@ -172,6 +186,20 @@ class Command(rocks.commands.remove.host.command):
 				physhost, = self.db.fetchone()
 			else:
 				continue
+
+			#
+			# try to undefine the domain in libvirt
+			#
+			import rocks.vmconstant
+
+			libvirt.registerErrorHandler(handler, 'context')
+			hipervisor = libvirt.open( rocks.vmconstant.connectionURL % physhost)
+			try:
+				dom = hipervisor.lookupByName(host)
+				dom.undefine()
+			except libvirt.libvirtError, m:
+				# the domain was not defined, no big deal
+				pass
 
 			#
 			# now remove the relevant rows in the database for

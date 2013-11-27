@@ -168,6 +168,7 @@ class Command(rocks.commands.stop.host.command):
 			try:
 				domU = hipervisor.lookupByName(host)
 				domU.destroy()
+				domU.undefine()
 			except:
 				pass
 

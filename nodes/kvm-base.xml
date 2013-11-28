@@ -154,5 +154,34 @@ mv /dev/random.orig /dev/random
 </post>
 
 
+<!-- we need to place the directory to save KVM status in a
+     big partition. Libvirt does not allow to set this directory
+     through configuration parameters do we ln -s -->
+<post>
+<file name="/etc/rc.d/rocksconfig.d/post-10-kvm-save-dir" perms="755">
+#!/bin/bash
+
+
+if [ "&kvm_save_directory;" ]; then
+	BIG_PART="&kvm_save_directory;"
+else
+	# we need to find the biggest partition available
+	BIG_PART=`/opt/rocks/bin/rocks list host partition &hostname; bigmnt=1`
+	BIG_PART="$BIG_PART/kvm/save"
+fi
+
+
+ORIG=/var/lib/libvirt/qemu/save
+if [ -e "$ORIG" ]; then
+	rm -rf $ORIG
+fi
+mkdir -p "$BIG_PART";
+chown qemu:qemu "$BIG_PART";
+ln -s "$BIG_PART" $ORIG;
+
+rm -f /etc/rc.d/rocksconfig.d/post-10-kvm-save-dir
+</file>
+</post>
+
 </kickstart>
 

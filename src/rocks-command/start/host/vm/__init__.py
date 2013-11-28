@@ -178,8 +178,9 @@
 
 import os
 import tempfile
-import rocks.commands
 import rocks.vmextended
+import rocks.commands
+import rocks.vmconstant
 import re
 
 import sys
@@ -221,18 +222,15 @@ class Command(rocks.commands.start.host.command):
 	"""
 
 
-	def bootVM(self, physhost, host, xmlconfig):
-		import rocks.vmconstant
-		hipervisor = libvirt.open( rocks.vmconstant.connectionURL % physhost)
+	def bootVM(self, hipervisor, host, xmlconfig):
+		""" try to boot a VM named host defined by xmlconfig
 
-		self.command('sync.host.vlan', [host])
+		if it succeeds it returns True if it fails because of a missing
+		disk it returns False all other cases it throw an exception"""
 		#
-		# suppress an error message when a VM is started and
-		# the disk file doesn't exist yet.
+		# first let's try to undefine the old domain if any
 		#
-		libvirt.registerErrorHandler(handler, 'context')
 		try:
-			# undefine old domain if any
 			dom = hipervisor.lookupByName(host)
 			# but before check that it is not running
 			if dom.info()[0] == libvirt.VIR_DOMAIN_RUNNING or \
@@ -247,11 +245,15 @@ class Command(rocks.commands.start.host.command):
 			# that's ok the domain is not defined
 			pass
 
-
-		retry = 0
 		try:
 			domain = hipervisor.defineXML(xmlconfig)
 			domain.create()
+			if domain and \
+				self.db.getHostAttr(host, 'kvm_autostart') == 'true':
+				# let's set autostart
+				domain.setAutostart(True)
+
+			return True
 
 		except libvirt.libvirtError, m:
 			str = '%s' % m
@@ -259,42 +261,12 @@ class Command(rocks.commands.start.host.command):
 					 str.find("Disk image does not exist") >= 1 or \
 					 str.find("No such file or directory")
 			if NoDisk:
-				#
 				# the disk hasn't been created yet,
-				# call a program to set them up, then
-				# retry the createLinux()
-				#
-				cmd = 'ssh -q %s ' % physhost
-				cmd += '/opt/rocks/bin/'
-				cmd += 'rocks-create-vm-disks '
-				cmd += '--hostname=%s' % host
-				os.system(cmd)
-
-				retry = 1
+				return False
 			else:
 				print str
 				raise
 
-		if retry:
-			domain = hipervisor.defineXML(xmlconfig)
-			domain.create()
-
-		if domain and \
-			self.db.getHostAttr(host, 'kvm_autostart') == 'true':
-			# let's set autostart
-			ret = domain.setAutostart(True)
-
-                #lets check the installAction
-                installAction = None
-                rows = self.db.execute("""select installaction
-                        from nodes where name = '%s' """ % host)
-                if rows > 0:
-                        installAction, = self.db.fetchone()
-                if installAction == "install vm frontend" :
-			#this is a virtual frontend we need to change the boot action
-			self.command('set.host.boot',[ host, "action=os" ])
-
-		return
 
 
 	def run(self, params, args):
@@ -322,6 +294,34 @@ class Command(rocks.commands.start.host.command):
 			#
 			# boot the VM
 			#
-			self.bootVM(physhost, host, xmlconfig)
+			hipervisor = libvirt.open( rocks.vmconstant.connectionURL % physhost)
+			libvirt.registerErrorHandler(handler, 'context')
+			self.command('sync.host.vlan', [host])
 
+			if not self.bootVM(hipervisor, host, xmlconfig):
+				#
+				# the disk hasn't been created yet,
+				# call a program to set them up, then
+				# retry the createLinux()
+				#
+				cmd = 'ssh -q %s ' % physhost
+				cmd += '/opt/rocks/bin/'
+				cmd += 'rocks-create-vm-disks '
+				cmd += '--hostname=%s' % host
+				os.system(cmd)
+
+				# let's try one last time to start the domain
+				if not self.bootVM(hipervisor, host, xmlconfig):
+					# we should never get here
+					self.abort('unable to boot the virtual machine')
+
+	                #lets check the installAction
+	                installAction = None
+	                rows = self.db.execute("""select installaction
+	                        from nodes where name = '%s' """ % host)
+	                if rows > 0:
+	                        installAction, = self.db.fetchone()
+	                if installAction == "install vm frontend" :
+				#this is a virtual frontend we need to change the boot action
+				self.command('set.host.boot',[ host, "action=os" ])
 

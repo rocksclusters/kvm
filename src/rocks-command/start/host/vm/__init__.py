@@ -242,6 +242,12 @@ class Command(rocks.commands.start.host.command):
 					% host)
 			dom.undefine()
 		except libvirt.libvirtError, m:
+			if str(m).find("managed save image exists") > 0:
+				rocks.commands.Abort("Saved image exists. "
+					"Try to run \nrocks restore host vm %s "
+					"file=/var/lib/libvirt/qemu/save/%s.save\n"
+					"ssh %s rm -f /var/lib/libvirt/qemu/save/%s.save"
+					% (host, host, hipervisor.getHostname(), host))
 			# that's ok the domain is not defined
 			pass
 

@@ -62,6 +62,11 @@ import time
 import rocks.commands
 import rocks.vmextended
 
+
+from rocks.commands.sync.host import Parallel
+from rocks.commands.sync.host import timeout
+
+
 class Command(rocks.commands.sync.host.command):
 	"""
 	Start the vlan interface needed by virtual 
@@ -69,7 +74,11 @@ class Command(rocks.commands.sync.host.command):
 	VLan used by virtual machines now are not anymore under
 	Red Hat network manager control, but they are started 
 	automatically by this command.
-	
+
+	If invoked against a VM it will start the VM vlan.
+
+	If invoked against a VM-container it will update the file
+	/etc/libvirt/networking/vlan.conf
 
 	<example cmd='sync host vlan compute-0-0-0'>
 	Start the vlan needed by the virtual host compute-0-0-0
@@ -78,87 +87,50 @@ class Command(rocks.commands.sync.host.command):
 	"""
 
 
-	def startUpNetwork(self, physhost, host):
-		"""start up Vlan interface on the physhost 
-		if the host is using any of them 
-		Vlan are not managed anymore by the Redhat 
-		network scripts"""
-
-		#get the vlanid of the VM
-		self.db.execute("""select net.vlanid
-			from networks net, nodes n
-			where net.node = n.id and net.vlanid > 0 
-			and n.name = "%s" """ % (host))
-		for row in self.db.fetchall():
-			vlanid= row[0]
-
-			#given the vlanid get the network device on the dom0 
-			self.db.execute("""select distinctrow net.device, net.subnet, 
-				net.module, s.mtu, net.options, net.channel
-				from networks net, nodes n, subnets s 
-				where net.node = n.id and if(net.subnet, net.subnet = s.id, true) and
-				n.name = "%s" and net.vlanid = %s order by net.id""" % (physhost, vlanid))
-
-			for row in self.db.fetchall():
-				(device, subnetid, module, mtu, options, channel) = row
-				#print "device: ", device, vlanid
-				#
-				# look up the name of the interface that
-				# maps to this VLAN spec
-				#
-				rows = self.db.execute("""select net.device from
-					networks net, nodes n where
-					n.id = net.node and n.name = '%s'
-					and net.subnet = %d and
-					net.device not like 'vlan%%' """ %
-					(physhost, subnetid))
-				
-				if rows:
-					dev, = self.db.fetchone()
-					#
-					# check if already referencing 
-					# a physical device
-					#
-					if dev != device:
-						device = 'p' + dev
-				else:
-					self.abort('Unable to get device name for dev: ', device)
-
-				#
-				# let's check if the device is already up
-				#
-				ret = os.system("ssh %s ip link show %s.%s > /dev/null 2>&1 " % 
-						(physhost, device, vlanid))
-				if ret != 0:
-					#
-					# the vlan is down let's activate it
-					#
-					ret = os.system(("ssh %s \"vconfig add %s %s; ifconfig %s.%s up; " +
-							" ip link set arp off dev %s.%s\" ") % 
-							(physhost, device, vlanid, device, vlanid, device, vlanid))
-					if ret != 0:
-						self.abort('Unable to instantiate vlan ' + str(vlanid) + \
-							' on device ' + device)
-			
-	
 	def run(self, params, args):
 		hosts = self.getHostnames(args, managed_only=1)
 
 		if len(hosts) < 1:
 			self.abort('must supply at least one host')
 
+		threads = []
+		localhost = self.getHostnames(["localhost"])[0]
+
 		for host in hosts:
 			#
 			# the name of the physical host that will boot
 			# this VM host
 			#
+			cmd = '/opt/rocks/bin/rocks report host vlan '
+			cmd += '%s | ' % host
+
 			vm = rocks.vmextended.VMextended(self.db)
 			(physnodeid, physhost) = vm.getPhysNode(host)
 
-			if not physhost or not physnodeid:
-				self.abort("Could not determine the physical host"
-					"Error host %s must be a virtual host" % host)
+			if physnodeid and physhost:
+				if physhost == localhost:
+					exec_statement = 'bash > /dev/null 2>&1 '
+				else:
+					exec_statement = 'ssh -T -x %s bash > /dev/null 2>&1 ' \
+						% physhost
 
-			self.startUpNetwork(physhost, host)
+				cmd += exec_statement
+				# this is called only on a single host, no need to use parralel
+				os.system(cmd)
 
+			else:
+				if host == localhost:
+					exec_statement = 'bash > /dev/null 2>&1 '
+				else:
+					exec_statement = 'ssh -T -x %s bash > /dev/null 2>&1 ' \
+						% host
+
+				cmd += '/opt/rocks/bin/rocks report script |'
+				cmd += exec_statement
+
+				p = Parallel(cmd, host)
+				threads.append(p)
+				p.start()
+				for thread in threads:
+					thread.join(timeout)
 

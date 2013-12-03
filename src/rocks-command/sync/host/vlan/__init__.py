@@ -94,7 +94,6 @@ class Command(rocks.commands.sync.host.command):
 			self.abort('must supply at least one host')
 
 		threads = []
-		localhost = self.getHostnames(["localhost"])[0]
 
 		for host in hosts:
 			#
@@ -108,25 +107,15 @@ class Command(rocks.commands.sync.host.command):
 			(physnodeid, physhost) = vm.getPhysNode(host)
 
 			if physnodeid and physhost:
-				if physhost == localhost:
-					exec_statement = 'bash > /dev/null 2>&1 '
-				else:
-					exec_statement = 'ssh -T -x %s bash > /dev/null 2>&1 ' \
-						% physhost
 
-				cmd += exec_statement
+				cmd += self.getExecCommand(physhost)
 				# this is called only on a single host, no need to use parralel
 				os.system(cmd)
 
 			else:
-				if host == localhost:
-					exec_statement = 'bash > /dev/null 2>&1 '
-				else:
-					exec_statement = 'ssh -T -x %s bash > /dev/null 2>&1 ' \
-						% host
 
 				cmd += '/opt/rocks/bin/rocks report script |'
-				cmd += exec_statement
+				cmd += self.getExecCommand(host)
 
 				p = Parallel(cmd, host)
 				threads.append(p)

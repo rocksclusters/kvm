@@ -256,15 +256,15 @@ class Command(rocks.commands.start.host.command):
 			return True
 
 		except libvirt.libvirtError, m:
-			str = '%s' % m
-			NoDisk = str.find("Disk isn't accessible") >= 1 or \
-					 str.find("Disk image does not exist") >= 1 or \
-					 str.find("No such file or directory") >= 1
+			str_tmp = '%s' % m
+			NoDisk = str_tmp.find("Disk isn't accessible") >= 1 or \
+					 str_tmp.find("Disk image does not exist") >= 1 or \
+					 str_tmp.find("No such file or directory") >= 1
 			if NoDisk:
 				# the disk hasn't been created yet,
 				return False
 			else:
-				print str
+				print str_tmp
 				raise
 
 

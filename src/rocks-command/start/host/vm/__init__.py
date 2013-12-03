@@ -222,7 +222,7 @@ class Command(rocks.commands.start.host.command):
 	"""
 
 
-	def bootVM(self, hipervisor, host, xmlconfig):
+	def bootVM(self, hipervisor, host, xmlconfig, autostart):
 		""" try to boot a VM named host defined by xmlconfig
 
 		if it succeeds it returns True if it fails because of a missing
@@ -254,9 +254,7 @@ class Command(rocks.commands.start.host.command):
 		try:
 			domain = hipervisor.defineXML(xmlconfig)
 			domain.create()
-			if domain and \
-				self.db.getHostAttr(host, 'kvm_autostart') == 'true':
-				# let's set autostart
+			if domain and autostart:
 				domain.setAutostart(True)
 
 			return True
@@ -281,6 +279,8 @@ class Command(rocks.commands.start.host.command):
 		if len(hosts) < 1:
 			self.abort('must supply at least one host')
 
+		sync_vlan = set()
+
 		for host in hosts:
 			#
 			# the name of the physical host that will boot
@@ -292,6 +292,11 @@ class Command(rocks.commands.start.host.command):
 			if not physhost or not physnodeid:
 				continue
 
+			if self.db.getHostAttr(host, 'kvm_autostart') == 'true':
+				autostart = True
+				sync_vlan.add(physhost)
+			else:
+				autostart = False
 			#
 			# get the VM configuration (in XML format for libvirt)
 			#
@@ -304,7 +309,7 @@ class Command(rocks.commands.start.host.command):
 			libvirt.registerErrorHandler(handler, 'context')
 			self.command('sync.host.vlan', [host])
 
-			if not self.bootVM(hipervisor, host, xmlconfig):
+			if not self.bootVM(hipervisor, host, xmlconfig, autostart):
 				#
 				# the disk hasn't been created yet,
 				# call a program to set them up, then
@@ -317,7 +322,7 @@ class Command(rocks.commands.start.host.command):
 				os.system(cmd)
 
 				# let's try one last time to start the domain
-				if not self.bootVM(hipervisor, host, xmlconfig):
+				if not self.bootVM(hipervisor, host, xmlconfig, autostart):
 					# we should never get here
 					self.abort('unable to boot the virtual machine')
 
@@ -330,4 +335,8 @@ class Command(rocks.commands.start.host.command):
 	                if installAction == "install vm frontend" :
 				#this is a virtual frontend we need to change the boot action
 				self.command('set.host.boot',[ host, "action=os" ])
+
+		# sync vlan
+		if sync_vlan:
+			self.command('sync.host.vlan', list(sync_vlan))
 

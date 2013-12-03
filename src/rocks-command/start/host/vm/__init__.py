@@ -259,7 +259,7 @@ class Command(rocks.commands.start.host.command):
 			str = '%s' % m
 			NoDisk = str.find("Disk isn't accessible") >= 1 or \
 					 str.find("Disk image does not exist") >= 1 or \
-					 str.find("No such file or directory")
+					 str.find("No such file or directory") >= 1
 			if NoDisk:
 				# the disk hasn't been created yet,
 				return False

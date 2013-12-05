@@ -60,6 +60,7 @@ import stat
 import tempfile
 import rocks.commands
 import rocks.vmextended
+import xml.sax.saxutils
 import re
 
 import sys
@@ -250,8 +251,10 @@ class Command(rocks.commands.report.host.command):
                 cpu_mode = self.db.getHostAttr(host, 'cpu_mode')
                 cpu_match = self.db.getHostAttr(host, 'cpu_match')
                 if cpu_mode :
-                        xmlconfig.append("<cpu mode='" + cpu_mode + "'/>")
+                        xmlconfig.append("<cpu mode='" + 
+				xml.sax.saxutils.unescape(cpu_mode) + "'/>")
                 elif cpu_match :
+			cpu_match = xml.sax.saxutils.unescape(cpu_match)
                         cpu_match_split = cpu_match.split(':', 1)
                         xmlconfig.append("<cpu mode='" + cpu_match_split[0] + "'>")
                         if len(cpu_match_split) > 1 :
@@ -266,14 +269,14 @@ class Command(rocks.commands.report.host.command):
 			        xmlconfig.append("  <vcpupin vcpu=\"%d\" cpuset=\"%d\"/>" % (i, i))
 			xmlconfig.append("</cputune>")
 		elif attribute:
-			xmlconfig.append(attribute)
+			xmlconfig.append(xml.sax.saxutils.unescape(attribute))
 
 		if virtType == 'hvm':
 			features = self.db.getHostAttr(host,'HVM_Features')
 			if features is None :
 				features = """\t<acpi/>\n\t<apic/>\n\t<pae/>"""
 			xmlconfig.append("<features>")
-			xmlconfig.append(features)
+			xmlconfig.append(xml.sax.saxutils.unescape(features))
 			xmlconfig.append("</features>")
 
 		#
@@ -447,7 +450,7 @@ class Command(rocks.commands.report.host.command):
 			attribute = self.db.getHostAttr(host, 'kvm_device_%d' % i)
 			i = i + 1
 			if attribute :
-				xmlconfig.append(attribute)
+				xmlconfig.append(xml.sax.saxutils.unescape(attribute))
 			else:
 				break
 
@@ -464,7 +467,7 @@ class Command(rocks.commands.report.host.command):
 
 	def run(self, params, args):
 		hosts = self.getHostnames(args)
-		
+
 		if len(hosts) < 1:
 			self.abort('must supply at least one host')
 
@@ -480,6 +483,6 @@ class Command(rocks.commands.report.host.command):
 			xmlconfig = self.getXMLconfig(physhost, host)
 			self.addOutput(host, '%s' % xmlconfig)
 		self.endOutput(padChar='')
-	
+
 
 

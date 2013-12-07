@@ -220,7 +220,9 @@ class Command(rocks.commands.start.service.command):
 	def trace_vm_container(self):
 		# we need to check the status of all the VMs
 		# TODO this needs to be triggered for every new physical node reinstallation
-		vm_containers = set()
+		url_deaddomains = set()
+		vircon_list = []
+
 		self.db.execute("""select n.name from nodes as n
 				where n.id not in
 				(select vmn.node from vm_nodes as vmn)""")
@@ -231,68 +233,121 @@ class Command(rocks.commands.start.service.command):
 			attrs = self.db.getHostAttrs(host)
 			if attrs.get('managed') == 'true' and \
 				attrs.get('kvm') == 'true':
-				vm_containers.add(host)
+				url_deaddomains.add(rocks.vmconstant.connectionURL % host)
+			# add frontend which is unmanaged :-o
+			if attrs.get('Kickstart_PrivateHostname') == host and \
+				attrs.get('kvm') == 'true':
+				url_deaddomains.add(rocks.vmconstant.connectionURL % host)
 
 		def virEventLoopNativeRun():
 			while True:
 				libvirt.virEventRunDefaultImpl()
 		# Run a background thread with the event loop
+		libvirt.registerErrorHandler(handler, 'context')
 		libvirt.virEventRegisterDefaultImpl()
-		eventLoopThread = threading.Thread(target=virEventLoopNativeRun, name="libvirtEventLoop")
+
+		eventLoopThread = threading.Thread(target=virEventLoopNativeRun, 
+					name="libvirtEventLoop")
 		eventLoopThread.setDaemon(True)
 		eventLoopThread.start()
-				
-	
-		for host in vm_containers:
 
-			self.logger.debug("Monitoring hosts: %s " % host)
-			vc = libvirt.openReadOnly(rocks.vmconstant.connectionURL % host)
-			vc.domainEventRegisterAny(None, libvirt.VIR_DOMAIN_EVENT_ID_LIFECYCLE, myDomainEventCallback2, None)
-			vc.setKeepAlive(5, 3)
-	
 		self.logger.debug("Entering passive wait for event")	
 		while True:
-		    time.sleep(1)
+			# first let's check if some container went down 
+			# Unfortunately in RHEL 6.X libvirt-python is missing the 
+			# registerCloseCallback and unregisterCloseCallback
+			# so we need to pool the connections
+			#
+			# to eliminate element while looping we have to go backward
+			for i in xrange(len(vircon_list) - 1, -1, -1):
+				vc = vircon_list[i]
+				if not vc.isAlive():
+					# 
+					uri = vc.getURI()
+					self.logger.debug("Host %s is not monitored" % uri)
+					url_deaddomains.add(uri)
+					try:
+						vc.close()
+					except:
+						pass
+					del vircon_list[i]
+			# let's see if any url_deaddomains is back alive
+			for i in set(url_deaddomains):
+				vc = self.connectDomain(i)
+				if vc:
+					# resurrected
+					self.logger.debug("Hosts %s is monitored" % i)
+					vircon_list.append(vc)
+					url_deaddomains.remove(i)
+				else:
+					# the deaddomain is still dead
+					pass
+			time.sleep(1)
 
 
 
 
+	def connectDomain(self, url):
+		"""attempt to connect to a libvirtd daemon.
+
+		On success returns a virConnection on failure None"""
+		try:
+			vc = libvirt.openReadOnly(url)
+			vc.domainEventRegisterAny(None,
+				libvirt.VIR_DOMAIN_EVENT_ID_LIFECYCLE,
+				lifeCycleCallBack, None)
+			vc.setKeepAlive(5, 3)
+		except libvirt.libvirtError, e:
+			if "unable to connect" in str(e):
+				return None
+			else:
+				raise e
+		return vc
 
 
+
+
+# this function is used to suppress libvirt error message on the std output
+def handler(ctxt, err):
+	global errno
+	errno = err
 
 
 def eventToString(event):
-    eventStrings = ( "Defined",
-                     "Undefined",
-                     "Started",
-                     "Suspended",
-                     "Resumed",
-                     "Stopped",
-                     "Shutdown",
-                     "PMSuspended",
-                     "Crashed" )
-    return eventStrings[event]
+	eventStrings = ("Defined",
+			"Undefined",
+			"Started",
+			"Suspended",
+			"Resumed",
+			"Stopped",
+			"Shutdown",
+			"PMSuspended",
+			"Crashed" )
+	return eventStrings[event]
 
 def detailToString(event, detail):
-    eventStrings = (
-        ( "Added", "Updated" ),
-        ( "Removed", ),
-        ( "Booted", "Migrated", "Restored", "Snapshot", "Wakeup" ),
-        ( "Paused", "Migrated", "IOError", "Watchdog", "Restored", "Snapshot", "API error" ),
-        ( "Unpaused", "Migrated", "Snapshot" ),
-        ( "Shutdown", "Destroyed", "Crashed", "Migrated", "Saved", "Failed", "Snapshot"),
-        ( "Finished", ),
-        ( "Memory", "Disk" ),
-        ( "Panicked", )
-        )
-    return eventStrings[event][detail]
+	eventStrings = (
+		( "Added", "Updated" ),
+		( "Removed", ),
+		( "Booted", "Migrated", "Restored", "Snapshot", "Wakeup" ),
+		( "Paused", "Migrated", "IOError", "Watchdog", "Restored", "Snapshot", "API error" ),
+		( "Unpaused", "Migrated", "Snapshot" ),
+		( "Shutdown", "Destroyed", "Crashed", "Migrated", "Saved", "Failed", "Snapshot"),
+		( "Finished", ),
+		( "Memory", "Disk" ),
+		( "Panicked", )
+		)
+	return eventStrings[event][detail]
 
 
-def myDomainEventCallback2 (conn, dom, event, detail, opaque):
-    print "myDomainEventCallback2 EVENT: Domain %s(%s) %s %s" % (dom.name(), dom.ID(),
-                                                                 eventToString(event),
-                                                                 detailToString(event, detail))
-    sys.stdout.flush()
+def lifeCycleCallBack(conn, dom, event, detail, opaque):
+	logger = logging.getLogger('charon')
+	if event == 6:
+		# this is a shutdown we need to call the hook function if defined
+		logger.critical("Host %s was stopped" % dom.name())
+		#TODO do something
 
-
+	logger.debug("myDomainEventCallback2 EVENT: Domain %s(%s) %s %s" % (dom.name(), dom.ID(),
+	                                                             eventToString(event),
+	                                                             detailToString(event, detail)))
 

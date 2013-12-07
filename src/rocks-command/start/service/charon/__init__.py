@@ -220,8 +220,7 @@ class Command(rocks.commands.start.service.command):
 	def trace_vm_container(self):
 		# we need to check the status of all the VMs
 		# TODO this needs to be triggered for every new physical node reinstallation
-		url_deaddomains = set()
-		vircon_list = []
+		vircon_list = {}
 
 		self.db.execute("""select n.name from nodes as n
 				where n.id not in
@@ -233,11 +232,11 @@ class Command(rocks.commands.start.service.command):
 			attrs = self.db.getHostAttrs(host)
 			if attrs.get('managed') == 'true' and \
 				attrs.get('kvm') == 'true':
-				url_deaddomains.add(rocks.vmconstant.connectionURL % host)
+				vircon_list[rocks.vmconstant.connectionURL % host] = None
 			# add frontend which is unmanaged :-o
 			if attrs.get('Kickstart_PrivateHostname') == host and \
 				attrs.get('kvm') == 'true':
-				url_deaddomains.add(rocks.vmconstant.connectionURL % host)
+				vircon_list[rocks.vmconstant.connectionURL % host] = None
 
 		def virEventLoopNativeRun():
 			while True:
@@ -258,30 +257,28 @@ class Command(rocks.commands.start.service.command):
 			# registerCloseCallback and unregisterCloseCallback
 			# so we need to pool the connections
 			#
-			# to eliminate element while looping we have to go backward
-			for i in xrange(len(vircon_list) - 1, -1, -1):
-				vc = vircon_list[i]
-				if not vc.isAlive():
-					# 
-					uri = vc.getURI()
+			for uri in vircon_list:
+				vc = vircon_list[uri]
+				if not vc:
+					# this is a dead domain let's see if it resurected
+					vc = self.connectDomain(uri)
+					if vc:
+						# resurrected
+						self.logger.debug("Hosts %s is monitored" % uri)
+						vircon_list[uri] = vc
+					else:
+						# the deaddomain is still dead
+						pass
+
+				elif not vc.isAlive():
+					# once was alive but now is dead
 					self.logger.debug("Host %s is not monitored" % uri)
-					url_deaddomains.add(uri)
+					vircon_list[uri] = None
 					try:
 						vc.close()
 					except:
 						pass
-					del vircon_list[i]
-			# let's see if any url_deaddomains is back alive
-			for i in set(url_deaddomains):
-				vc = self.connectDomain(i)
-				if vc:
-					# resurrected
-					self.logger.debug("Hosts %s is monitored" % i)
-					vircon_list.append(vc)
-					url_deaddomains.remove(i)
-				else:
-					# the deaddomain is still dead
-					pass
+			#TODO sleep more
 			time.sleep(1)
 
 

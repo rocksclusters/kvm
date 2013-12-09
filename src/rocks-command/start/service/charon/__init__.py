@@ -73,6 +73,8 @@ sys.path.append('/usr/lib64/python2.' + str(sys.version_info[1]) + '/site-packag
 sys.path.append('/usr/lib/python2.' + str(sys.version_info[1]) + '/site-packages')
 import libvirt
 
+
+pidfile = '/var/run/charon/charon.pid'
 reload_vmcontainers = False
 
 class Command(rocks.commands.start.service.command):
@@ -155,6 +157,12 @@ class Command(rocks.commands.start.service.command):
 		# we need to check the status of all the VMs
 		# TODO this needs to be triggered for every new physical node reinstallation
 		signal.signal(signal.SIGUSR1, signalUsr1Handler)
+
+		if not os.path.exists(os.path.dirname(pidfile)):
+			os.mkdirs(os.path.dirname(pidfile))
+		fd = open(pidfile,'w')
+		fd.write(str(os.getpid()))
+		fd.close()
 
 		def virEventLoopNativeRun():
 			while True:

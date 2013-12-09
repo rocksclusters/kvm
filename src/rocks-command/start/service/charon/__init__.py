@@ -63,6 +63,7 @@ import xml.sax.handler
 import time
 import logging
 import threading
+import signal
 
 import rocks.vm
 import rocks.vmconstant
@@ -127,63 +128,7 @@ class Command(rocks.commands.start.service.command):
 
 
 
-	def getState(self, physhost, host):
-		try:
-			import rocks.vmconstant
-			hipervisor = libvirt.open( rocks.vmconstant.connectionURL % physhost)
-		except:
-			return 'nostate'
-	
-		found = 0
-		for id in hipervisor.listDomainsID():
-			if id == 0:
-				#
-				# skip dom0
-				#
-				continue
-			
-			domU = hipervisor.lookupByID(id)
-			if domU.name() == host:
-				found = 1
-				break
 
-		state = 'nostate'
-
-		if found:
-			status = domU.info()[0]	
-
-			if status == libvirt.VIR_DOMAIN_NOSTATE:
-				state = 'nostate'
-			elif status == libvirt.VIR_DOMAIN_RUNNING or \
-					status == libvirt.VIR_DOMAIN_BLOCKED:
-				state = 'active'
-			elif status == libvirt.VIR_DOMAIN_PAUSED:
-				state = 'paused'
-			elif status == libvirt.VIR_DOMAIN_SHUTDOWN:
-				state = 'shutdown'
-			elif status == libvirt.VIR_DOMAIN_SHUTOFF:
-				state = 'shutoff'
-			elif status == libvirt.VIR_DOMAIN_CRASHED:
-				state = 'crashed'
-
-		return state
-
-
-
-
-	def dorequest(self, conn):
-		conn.close()
-
-
-	def cleanupchildren(self):
-		done = 0
-		while not done:
-			try:
-				(pid, status) = os.waitpid(0, os.WNOHANG)
-				if pid == 0:
-					done = 1
-			except:
-				done = 1
 
 
 	def run(self, params, args):
@@ -191,8 +136,6 @@ class Command(rocks.commands.start.service.command):
 
 		if not self.str2bool(foreground):
 			self.daemonize()
-
-
 
 		# create logger
 		self.logger = logging.getLogger('charon')
@@ -209,18 +152,12 @@ class Command(rocks.commands.start.service.command):
 		self.db.database = tempdb.link
 		self.db.link     = tempdb.link.cursor()
 		
-
 		self.logger.critical('charon started at %s\n' % time.asctime())
 
-		self.trace_vm_container()
-
-
-
-
-	def trace_vm_container(self):
 		# we need to check the status of all the VMs
 		# TODO this needs to be triggered for every new physical node reinstallation
 		vircon_list = {}
+		signal.signal(signal.SIGUSR1, signalUsr1Handler)
 
 		self.db.execute("""select n.name from nodes as n
 				where n.id not in
@@ -257,23 +194,23 @@ class Command(rocks.commands.start.service.command):
 			# registerCloseCallback and unregisterCloseCallback
 			# so we need to pool the connections
 			#
-			for uri in vircon_list:
-				vc = vircon_list[uri]
+			for url in vircon_list:
+				vc = vircon_list[url]
 				if not vc:
 					# this is a dead domain let's see if it resurected
-					vc = self.connectDomain(uri)
+					vc = self.connectDomain(url)
 					if vc:
 						# resurrected
-						self.logger.debug("Hosts %s is monitored" % uri)
-						vircon_list[uri] = vc
+						self.logger.debug("Hosts %s is monitored" % url)
+						vircon_list[url] = vc
 					else:
 						# the deaddomain is still dead
 						pass
 
 				elif not vc.isAlive():
 					# once was alive but now is dead
-					self.logger.debug("Host %s is not monitored" % uri)
-					vircon_list[uri] = None
+					self.logger.debug("Host %s is not monitored" % url)
+					vircon_list[url] = None
 					try:
 						vc.close()
 					except:
@@ -348,3 +285,7 @@ def lifeCycleCallBack(conn, dom, event, detail, opaque):
 	                                                             eventToString(event),
 	                                                             detailToString(event, detail)))
 
+
+def signalUsr1Handler(signum, frame):
+	logger = logging.getLogger('charon')
+	logger.debug('Signal handler called with signal' + str(signum))

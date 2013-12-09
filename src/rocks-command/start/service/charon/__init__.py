@@ -73,7 +73,7 @@ sys.path.append('/usr/lib64/python2.' + str(sys.version_info[1]) + '/site-packag
 sys.path.append('/usr/lib/python2.' + str(sys.version_info[1]) + '/site-packages')
 import libvirt
 
-
+reload_vmcontainers = False
 
 class Command(rocks.commands.start.service.command):
 	"""
@@ -127,20 +127,18 @@ class Command(rocks.commands.start.service.command):
 
 
 
-
-
-
-
 	def run(self, params, args):
-		foreground, = self.fillParams([ ('foreground', 'n') ])
+		# this holds the list of vm_containers that we are currently
+		# monitoring
+		self.vircon_list = {}
 
+		foreground, = self.fillParams([ ('foreground', 'n') ])
 		if not self.str2bool(foreground):
 			self.daemonize()
 
 		# create logger
 		self.logger = logging.getLogger('charon')
 		self.logger.setLevel(logging.DEBUG)
-		# create file handler which logs even debug messages
 		fh = logging.FileHandler('/var/log/charon.log')
 		fh.setLevel(logging.DEBUG)
 		self.logger.addHandler(fh)
@@ -156,24 +154,7 @@ class Command(rocks.commands.start.service.command):
 
 		# we need to check the status of all the VMs
 		# TODO this needs to be triggered for every new physical node reinstallation
-		vircon_list = {}
 		signal.signal(signal.SIGUSR1, signalUsr1Handler)
-
-		self.db.execute("""select n.name from nodes as n
-				where n.id not in
-				(select vmn.node from vm_nodes as vmn)""")
-
-		for host, in self.db.fetchall():
-			# we save same queries to the DB temporary storing 
-			# here all attributes
-			attrs = self.db.getHostAttrs(host)
-			if attrs.get('managed') == 'true' and \
-				attrs.get('kvm') == 'true':
-				vircon_list[rocks.vmconstant.connectionURL % host] = None
-			# add frontend which is unmanaged :-o
-			if attrs.get('Kickstart_PrivateHostname') == host and \
-				attrs.get('kvm') == 'true':
-				vircon_list[rocks.vmconstant.connectionURL % host] = None
 
 		def virEventLoopNativeRun():
 			while True:
@@ -187,22 +168,35 @@ class Command(rocks.commands.start.service.command):
 		eventLoopThread.setDaemon(True)
 		eventLoopThread.start()
 
-		self.logger.debug("Entering passive wait for event")	
+		# populate the vircon_list
+		self.load_vmcontainers()
+
+		# enter the main monitoring loop
+		self.logger.debug("Charon setup finished. Entering monitoring loop")
 		while True:
-			# first let's check if some container went down 
-			# Unfortunately in RHEL 6.X libvirt-python is missing the 
+
+			# check if we have to update the vircon_list (new nodes installed
+			# or removed
+			global reload_vmcontainers
+			if reload_vmcontainers == True:
+				reload_vmcontainers = False
+				self.load_vmcontainers()
+
+			#
+			# check if some libvirtd on vm_containers went down
+			# Unfortunately in RHEL 6.X libvirt-python is missing the
 			# registerCloseCallback and unregisterCloseCallback
 			# so we need to pool the connections
 			#
-			for url in vircon_list:
-				vc = vircon_list[url]
+			for url in self.vircon_list:
+				vc = self.vircon_list[url]
 				if not vc:
 					# this is a dead domain let's see if it resurected
 					vc = self.connectDomain(url)
 					if vc:
 						# resurrected
 						self.logger.debug("Hosts %s is monitored" % url)
-						vircon_list[url] = vc
+						self.vircon_list[url] = vc
 					else:
 						# the deaddomain is still dead
 						pass
@@ -210,7 +204,7 @@ class Command(rocks.commands.start.service.command):
 				elif not vc.isAlive():
 					# once was alive but now is dead
 					self.logger.debug("Host %s is not monitored" % url)
-					vircon_list[url] = None
+					self.vircon_list[url] = None
 					try:
 						vc.close()
 					except:
@@ -218,6 +212,43 @@ class Command(rocks.commands.start.service.command):
 			#TODO sleep more
 			time.sleep(1)
 
+
+
+	def load_vmcontainers(self):
+		"""sincronize the vircon_list with the rocks database"""
+
+		self.logger.debug("Reloading nodes from database")
+		self.db.execute("""select n.name from nodes as n
+				where n.id not in
+				(select vmn.node from vm_nodes as vmn)""")
+
+		vm_containers = set()
+		for host, in self.db.fetchall():
+			# storing here all the attributes we avoid repeating DB queries
+			attrs = self.db.getHostAttrs(host)
+			if attrs.get('managed') == 'true' and \
+				attrs.get('kvm') == 'true':
+				vm_containers.add(rocks.vmconstant.connectionURL % host)
+			# add frontend which is unmanaged :-o
+			if attrs.get('Kickstart_PrivateHostname') == host and \
+				attrs.get('kvm') == 'true':
+				vm_containers.add(rocks.vmconstant.connectionURL % host)
+
+		# these need to be added
+		tobe_added = vm_containers - set(self.vircon_list.keys())
+		# and these to be removed
+		tobe_removed = set(self.vircon_list.keys()) - vm_containers
+		for url in tobe_added:
+			self.logger.debug("Adding vm-container %s" % url)
+			self.vircon_list[url] = None
+		for url in tobe_removed:
+			self.logger.debug("Removing vm-container %s" % url)
+			if self.vircon_list[url]:
+				try:
+					self.vircon_list[url].close()
+				except:
+					pass
+				del self.vircon_list[url]
 
 
 
@@ -281,11 +312,9 @@ def lifeCycleCallBack(conn, dom, event, detail, opaque):
 		logger.critical("Host %s was stopped" % dom.name())
 		#TODO do something
 
-	logger.debug("myDomainEventCallback2 EVENT: Domain %s(%s) %s %s" % (dom.name(), dom.ID(),
-	                                                             eventToString(event),
-	                                                             detailToString(event, detail)))
 
 
 def signalUsr1Handler(signum, frame):
-	logger = logging.getLogger('charon')
-	logger.debug('Signal handler called with signal' + str(signum))
+	"""signal handler for sigusr1 which will trigger a self.load_vmcontainers"""
+	global reload_vmcontainers
+	reload_vmcontainers = True

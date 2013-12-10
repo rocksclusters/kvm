@@ -57,9 +57,11 @@
 #
 #
 
-import rocks.commands
 import os
+import traceback
 import re
+
+import rocks.commands
 from rocks.commands.start.service.charon import pidfile 
 
 class Command(rocks.commands.stop.service.command):
@@ -82,12 +84,17 @@ class Command(rocks.commands.stop.service.command):
 	def run(self, params, args):
 
 		if os.path.exists(pidfile):
-			fd = open(pidfile)
-			pid = fd.read()
-			fd.close()
-			os.kill(int(pid), 9)
-			os.unlink(pidfile)
-			return
+			try:
+				fd = open(pidfile)
+				pid = fd.read()
+				fd.close()
+				os.kill(int(pid), 9)
+				os.unlink(pidfile)
+				return
+			except:
+				print "Problem while stopping Charon"
+				traceback.print_exc()
+
 		
 			
 		for p in os.listdir('/proc'):

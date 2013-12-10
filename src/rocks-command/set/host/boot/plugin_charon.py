@@ -85,7 +85,8 @@ def notify_charon():
 		fd = open(pidfile)
 		pid = fd.read()
 		fd.close()
-		os.kill(int(pid), 10)
+		# Quick and dirty way to postpone of some second the signal
+		os.system('(sleep 10; kill -10 ' + pid + ') &')
 	except:
 		# don't kill the process or remove host will fail
 		# but log as much as you can 

@@ -271,10 +271,11 @@ class Command(rocks.commands.start.service.command):
 				lifeCycleCallBack, None)
 			vc.setKeepAlive(5, 3)
 		except libvirt.libvirtError, e:
-			if "unable to connect" in str(e):
-				return None
-			else:
-				raise e
+			if not 'unable to connect to server' in str(e):
+				# log something
+				self.logger.debug("Error connecting to %s: %s" %
+					(url, str(e)))
+			return None
 		return vc
 
 

@@ -88,8 +88,8 @@ class Command(rocks.commands.stop.service.command):
 				fd = open(pidfile)
 				pid = fd.read()
 				fd.close()
-				os.kill(int(pid), 9)
 				os.unlink(pidfile)
+				os.kill(int(pid), 9)
 				return
 			except:
 				print "Problem while stopping Charon"

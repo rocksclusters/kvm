@@ -181,6 +181,7 @@ import tempfile
 import rocks.vmextended
 import rocks.commands
 import rocks.vmconstant
+import syslog
 import re
 
 import sys
@@ -283,12 +284,22 @@ class Command(rocks.commands.start.host.command):
 
 		for host in hosts:
 			#
+			# I need an extra argument to run the plugins so they can modify
+			# the XML. User should make sure the last plugin returns a valid
+			# XML
+			#
+			plugins = self.loadPlugins()
+			for plugin in plugins:
+				if 'plugin_allocate' in plugin.__module__:
+					syslog.syslog(syslog.LOG_INFO, 'run %s' % plugin)
+					plugin.run(host)
+
+			#
 			# the name of the physical host that will boot
 			# this VM host
 			#
 			vm = rocks.vmextended.VMextended(self.db)
 			(physnodeid, physhost) = vm.getPhysNode(host)
-
 			if not physhost or not physnodeid:
 				continue
 
@@ -298,16 +309,22 @@ class Command(rocks.commands.start.host.command):
 			else:
 				autostart = False
 			#
-			# get the VM configuration (in XML format for libvirt)
-			#
-			xmlconfig = self.command('report.host.vm.config', [ host ])
-
-			#
 			# boot the VM
 			#
 			hipervisor = libvirt.open( rocks.vmconstant.connectionURL % physhost)
 			libvirt.registerErrorHandler(handler, 'context')
 			self.command('sync.host.vlan', [host])
+
+			#
+			# get the VM configuration (in XML format for libvirt)
+			#
+			for plugin in plugins:
+				if 'plugin_preboot' in plugin.__module__:
+					syslog.syslog(syslog.LOG_INFO, 'run %s' % plugin)
+					xmlconfig = plugin.run(host)
+
+			if not xmlconfig:
+				xmlconfig = self.command('report.host.vm.config', [ host ])
 
 			if not self.bootVM(hipervisor, host, xmlconfig, autostart):
 				#
@@ -335,6 +352,8 @@ class Command(rocks.commands.start.host.command):
 	                if installAction == "install vm frontend" :
 				#this is a virtual frontend we need to change the boot action
 				self.command('set.host.boot',[ host, "action=os" ])
+
+
 
 		# sync vlan
 		if sync_vlan:

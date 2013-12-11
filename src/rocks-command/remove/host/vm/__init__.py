@@ -110,8 +110,10 @@
 #
 
 import os
+import rocks
 import rocks.commands
 import rocks.vmextended
+import rocks.vmconstant
 
 import sys
 sys.path.append('/usr/lib64/python2.' + str(sys.version_info[1]) + '/site-packages')
@@ -180,10 +182,9 @@ class Command(rocks.commands.remove.host.command):
 			#
 			# try to undefine the domain in libvirt
 			#
-			import rocks.vmconstant
 
 			libvirt.registerErrorHandler(handler, 'context')
-			hipervisor = libvirt.open( rocks.vmconstant.connectionURL % physhost)
+			hipervisor = libvirt.open(rocks.vmconstant.connectionURL % physhost)
 			try:
 				dom = hipervisor.lookupByName(host)
 				dom.undefine()

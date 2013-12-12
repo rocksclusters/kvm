@@ -281,14 +281,13 @@ class Command(rocks.commands.start.host.command):
 			self.abort('must supply at least one host')
 
 		sync_vlan = set()
+		plugins = self.loadPlugins()
 
 		for host in hosts:
 			#
-			# I need an extra argument to run the plugins so they can modify
-			# the XML. User should make sure the last plugin returns a valid
-			# XML
+			# I need to run only one particular plugin here i can't just
+			# just call the plugins.runPlugins()
 			#
-			plugins = self.loadPlugins()
 			for plugin in plugins:
 				if 'plugin_allocate' in plugin.__module__:
 					syslog.syslog(syslog.LOG_INFO, 'run %s' % plugin)
@@ -352,8 +351,6 @@ class Command(rocks.commands.start.host.command):
 	                if installAction == "install vm frontend" :
 				#this is a virtual frontend we need to change the boot action
 				self.command('set.host.boot',[ host, "action=os" ])
-
-
 
 		# sync vlan
 		if sync_vlan:

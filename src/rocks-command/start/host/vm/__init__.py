@@ -317,6 +317,7 @@ class Command(rocks.commands.start.host.command):
 			#
 			# get the VM configuration (in XML format for libvirt)
 			#
+			xmlconfig = []
 			for plugin in plugins:
 				if 'plugin_preboot' in plugin.__module__:
 					syslog.syslog(syslog.LOG_INFO, 'run %s' % plugin)

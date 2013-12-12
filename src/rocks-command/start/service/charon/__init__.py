@@ -64,6 +64,9 @@ import time
 import logging
 import threading
 import signal
+import subprocess
+import shlex
+
 
 import rocks.vm
 import rocks.vmconstant
@@ -89,6 +92,11 @@ class Command(rocks.commands.start.service.command):
 	is 'no'.
 	</param>
 	"""
+
+	def Abort(self, msg):
+		""" this is to avoid being terminated because of a self.abort while 
+		calling a self.command()"""
+		self.logger.critical('abort: msg: ', msg)
 
 
 	def daemonize(self):
@@ -316,10 +324,26 @@ def detailToString(event, detail):
 
 def lifeCycleCallBack(conn, dom, event, detail, opaque):
 	logger = logging.getLogger('charon')
+	#logger.debug("myDomainEventCallback2 EVENT: Domain %s(%s) %s %s" % (dom.name(), dom.ID(),
+	#							eventToString(event),
+	#							detailToString(event, detail)))
+ 
 	if event == 6:
 		# this is a shutdown we need to call the hook function if defined
 		logger.critical("Host %s was stopped" % dom.name())
-		#TODO do something
+		cmd = '/opt/rocks/bin/rocks stop host vm ' + dom.name() 
+		cmd += ' terminate=true'
+
+		p = subprocess.Popen(shlex.split(cmd),
+			stdin = subprocess.PIPE,
+			stdout = subprocess.PIPE,
+			stderr = subprocess.STDOUT)
+		p.wait()
+
+		response = '\n'.join(p.stdout.readlines())
+
+		if len(response) > 0:
+			logger.critical(response)
 
 
 

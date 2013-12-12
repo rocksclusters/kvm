@@ -99,6 +99,7 @@
 
 import os
 import tempfile
+import syslog
 import rocks.commands
 import rocks.vmextended
 

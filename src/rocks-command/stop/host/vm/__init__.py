@@ -108,8 +108,7 @@ sys.path.append('/usr/lib/python2.' + str(sys.version_info[1]) + '/site-packages
 import libvirt
 
 #
-# this function is used to suppress an error message when we start a VM
-# for the very first time and there isn't a disk file created for it yet.
+# this function is used to suppress an error message
 # the error message looks like:
 #
 #	libvirt.libvirtError: Domain not found: xenUnifiedDomainLookupByName
@@ -124,6 +123,13 @@ class Command(rocks.commands.stop.host.command):
 	"""
 	Destroy a VM slice on a physical node.
 
+	<param type='bool' name='terminate'>
+	If this is true the command will run only the plugin since it will
+	assume that the host is already down.
+	This is used by charon to invoke the plugin when the machine powered 
+	off through the VM operating system
+	</param>
+
 	<arg type='string' name='host' repeat='1'>
 	A list of one or more VM host names.
 	</arg>
@@ -135,32 +141,50 @@ class Command(rocks.commands.stop.host.command):
 	"""
 
 	def run(self, params, args):
+
 		hosts = self.getHostnames(args)
-		
+		(terminate, ) = self.fillParams( [
+			('terminate', 'n'),
+			])
+
+		terminate = self.str2bool(terminate)
+
 		if len(hosts) < 1:
 			self.abort('must supply host')
 
+		plugins = self.loadPlugins()
+
 		for host in hosts:
+
+			if not terminate:
+				#
+				# the name of the physical host that will boot
+				# this VM host
+				#
+				import rocks
+				vm = rocks.vmextended.VMextended(self.db)
+				(physnodeid, physhost) = vm.getPhysNode(host)
+
+				if not physhost or not physnodeid:
+					continue
+
+				import rocks.vmconstant
+				hipervisor = libvirt.open(rocks.vmconstant.connectionURL 
+									% physhost)
+				libvirt.registerErrorHandler(handler, 'context')
+
+				try:
+					domU = hipervisor.lookupByName(host)
+					domU.destroy()
+					domU.undefine()
+				except libvirt.libvirtError, m:
+					pass
+
 			#
-			# the name of the physical host that will boot
-			# this VM host
+			# run the terminate plugins to deallocate the host resources
 			#
-			import rocks
-			vm = rocks.vmextended.VMextended(self.db)
-			(physnodeid, physhost) = vm.getPhysNode(host)
-
-			if not physhost or not physnodeid:
-				continue
-
-			import rocks.vmconstant
-			hipervisor = libvirt.open( rocks.vmconstant.connectionURL % physhost)
-			libvirt.registerErrorHandler(handler, 'context')
-
-			try:
-				domU = hipervisor.lookupByName(host)
-				domU.destroy()
-				domU.undefine()
-			except libvirt.libvirtError, m:
-				pass
+			for plugin in plugins:
+				syslog.syslog(syslog.LOG_INFO, 'run %s' % plugin)
+				plugin.run(host)
 
 

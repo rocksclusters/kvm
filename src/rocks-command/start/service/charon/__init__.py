@@ -135,6 +135,12 @@ class Command(rocks.commands.start.service.command):
 		os.dup2(so.fileno(), sys.stdout.fileno())
 		os.dup2(se.fileno(), sys.stderr.fileno())
 
+	def connectDB(self):
+		"""establish a DB connection"""
+		tempdb = rocks.sql.Application()
+		tempdb.connect()
+		self.db.database = tempdb.link
+		self.db.link     = tempdb.link.cursor()
 
 
 	def run(self, params, args):
@@ -155,10 +161,7 @@ class Command(rocks.commands.start.service.command):
 
 		# try to reconnect to the DB disgusting code!!
 		time.sleep(0.2)
-		tempdb = rocks.sql.Application()
-		tempdb.connect()
-		self.db.database = tempdb.link
-		self.db.link     = tempdb.link.cursor()
+		self.connectDB()
 		
 		self.logger.critical('charon started at %s\n' % time.asctime())
 
@@ -234,9 +237,17 @@ class Command(rocks.commands.start.service.command):
 		"""sincronize the vircon_list with the rocks database"""
 
 		self.logger.debug("Reloading nodes from database")
-		self.db.execute("""select n.name from nodes as n
+		physical_nodes_sql = """select n.name from nodes as n
 				where n.id not in
-				(select vmn.node from vm_nodes as vmn)""")
+				(select vmn.node from vm_nodes as vmn)"""
+		#
+		# DB goes in timeout after a while if inactive so we must reconnect
+		# in that case
+		try:
+			self.db.execute(physical_nodes_sql)
+		except _mysql_exceptions.OperationalError:
+			self.connectDB()
+			self.db.execute(physical_nodes_sql)
 
 		vm_containers = set()
 		for host, in self.db.fetchall():

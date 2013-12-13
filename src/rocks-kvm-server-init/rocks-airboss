@@ -1,4 +1,12 @@
-# $Id: Makefile,v 1.5 2012/11/27 00:49:07 phil Exp $
+#!/bin/sh
+#
+# $Id: rocks-airboss,v 1.6 2012/11/27 00:49:37 phil Exp $
+#
+# chkconfig: 35 99 01
+#
+# description: Start the service that will allow users to control their VMs.
+#
+# They'll be able to power on/off VMs and open a console to a VM.
 #
 # @Copyright@
 # 
@@ -54,26 +62,68 @@
 # 
 # @Copyright@
 #
+# $Log: rocks-airboss,v $
+# Revision 1.6  2012/11/27 00:49:37  phil
+# Copyright Storm for Emerald Boa
+#
+# Revision 1.5  2012/05/06 05:49:49  phil
+# Copyright Storm for Mamba
+#
+# Revision 1.4  2011/07/23 02:31:43  phil
+# Viper Copyright
+#
+# Revision 1.3  2010/09/07 23:53:32  bruno
+# star power for gb
+#
+# Revision 1.2  2010/08/05 18:31:30  bruno
+# one more spot to change the name to airboss
+#
+# Revision 1.1  2010/08/04 23:37:44  bruno
+# in with the airboss, out with the vm controller
+#
+#
 
+. /etc/rc.d/init.d/functions
 
-ARCH=$(shell ../_arch)
+start() {
+	action "Starting Rocks Airboss: " \
+		/opt/rocks/bin/rocks start service airboss
+	RETVAL=$?
 
-SRCDIRS = `find . -maxdepth 1 -type d -not -name CVS -not -name . -not -name pilot`
+	touch /var/lock/subsys/rocks-airboss
+	return $RETVAL
+}
 
-default:	rpm
+stop() {
+	action "Stopping Rocks Airboss: " \
+		/opt/rocks/bin/rocks stop service airboss
+	RETVAL=$?
 
-copyright rpm clean::
-	for i in $(SRCDIRS) ; do \
-		cd $$i || exit 2 ; \
-		$(MAKE) $@ || exit 2 ; \
-		cd -; \
-	done
+	rm -f /var/lock/subsys/rocks-airboss
+	return $RETVAL
+}
 
+#
+# main
+#
+case "$1" in
+start)
+	start
+	;;
 
-copyright clean::
-	for i in $(SRCDIRS) ; do \
-		cd $$i; \
-		$(MAKE) $@ || exit 2 ; \
-		cd -; \
-	done
+stop)
+	stop
+	;;
+
+restart)
+	stop
+	start
+	;;
+
+*)
+	echo "Usage: $0 {start|stop|restart}"
+	RETVAL=1	
+esac
+
+exit $RETVAL
 

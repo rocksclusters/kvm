@@ -1,4 +1,8 @@
-# $Id: Makefile,v 1.5 2012/11/27 00:49:07 phil Exp $
+#!/bin/sh
+#
+# chkconfig: 35 99 01
+#
+# description: Start the service that will monitor VM status
 #
 # @Copyright@
 # 
@@ -54,26 +58,48 @@
 # 
 # @Copyright@
 #
+#
+#
 
+. /etc/rc.d/init.d/functions
 
-ARCH=$(shell ../_arch)
+start() {
+	action "Starting Rocks Charon: " \
+		/opt/rocks/bin/rocks start service charon
+	RETVAL=$?
 
-SRCDIRS = `find . -maxdepth 1 -type d -not -name CVS -not -name . -not -name pilot`
+	return $RETVAL
+}
 
-default:	rpm
+stop() {
+	action "Stopping Rocks Charon: " \
+		/opt/rocks/bin/rocks stop service charon
+	RETVAL=$?
 
-copyright rpm clean::
-	for i in $(SRCDIRS) ; do \
-		cd $$i || exit 2 ; \
-		$(MAKE) $@ || exit 2 ; \
-		cd -; \
-	done
+	return $RETVAL
+}
 
+#
+# main
+#
+case "$1" in
+start)
+	start
+	;;
 
-copyright clean::
-	for i in $(SRCDIRS) ; do \
-		cd $$i; \
-		$(MAKE) $@ || exit 2 ; \
-		cd -; \
-	done
+stop)
+	stop
+	;;
+
+restart)
+	stop
+	start
+	;;
+
+*)
+	echo "Usage: $0 {start|stop|restart}"
+	RETVAL=1	
+esac
+
+exit $RETVAL
 

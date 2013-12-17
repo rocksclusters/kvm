@@ -47,6 +47,19 @@ CREATE TABLE vm_disks (
 	PRIMARY KEY (ID)
 ) TYPE=MyISAM;
 
+
+--
+-- create a view with fe_name vlanid for every cluster to simplify query
+--
+DROP VIEW IF EXISTS clusters;
+CREATE VIEW clusters AS
+SELECT n.name as cluster_name, net.vlanid
+FROM networks net, nodes n, vm_nodes vmn, memberships mem, subnets sub
+WHERE n.id = net.node AND n.id = vmn.node
+	AND mem.name = 'Frontend' AND mem.id = n.membership
+	AND net.vlanid > 0 AND sub.name = 'private'
+	AND sub.id = net.subnet ;
+
 </file>
 
 /opt/rocks/bin/mysql --defaults-extra-file=/root/.rocks.my.cnf \

@@ -329,7 +329,7 @@ class Command(rocks.commands.start.service.command):
 
 	def getVNCport(self, client, physnode):
 		import rocks.vmconstant
-		h = libvirt.open( rocks.vmconstant.connectionURL % physnode)
+		h = libvirt.open(rocks.vmconstant.connectionURL % physnode)
 
 		for id in h.listDomainsID():
 			if id == 0:
@@ -551,8 +551,7 @@ class Command(rocks.commands.start.service.command):
 			key = M2Crypto.RSA.load_pub_key_bio(bio)
 
 			try:
-				verify = key.verify(digest, signature,
-					'ripemd160')
+				verify = key.verify(digest, signature)
 				if verify == 1:
 					return 1
 			except:

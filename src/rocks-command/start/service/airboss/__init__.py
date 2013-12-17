@@ -159,6 +159,7 @@ import MySQLdb
 import subprocess
 import select
 import rocks.vm
+import rocks.vmextended
 import rocks.commands
 import xml.sax.handler
 import subprocess
@@ -361,22 +362,6 @@ class Command(rocks.commands.start.service.command):
 		return fds[0].fileno()
 
 
-	def getPhysNode(self, client):
-		#
-		# get the physical node that controls this VM
-		#
-		rows = self.db.execute("""select n.name from nodes n,
-			vm_nodes vn where vn.node = (select id from nodes
-			where name = '%s') and vn.physnode = n.id""" % client)
-
-		if rows == 0:
-			physnode = None
-		else:
-			physnode, = self.db.fetchone()
-
-		return physnode
-
-
 	def console(self, s, clientfd, dst_mac):
 		client = self.db.getHostname(dst_mac)
 		if not client:
@@ -384,7 +369,9 @@ class Command(rocks.commands.start.service.command):
 				'MAC address %s not in database' % dst_mac)
 			return
 
-		physnode = self.getPhysNode(client)
+		vm = rocks.vmextended.VMextended(self.db)
+		(physnodeid, physnode) = vm.getPhysNode(client)
+
 		if not physnode:
 			msg = 'could not find the physical host that controls'
 			msg += ' the VM for MAC address %s' % dst_mac
@@ -588,47 +575,6 @@ class Command(rocks.commands.start.service.command):
 			bytes += s.write(msg[bytes:])
 
 
-	def getState(self, physhost, host):
-		try:
-			import rocks.vmconstant
-			hipervisor = libvirt.open( rocks.vmconstant.connectionURL % physhost)
-		except:
-			return 'nostate'
-	
-		found = 0
-		for id in hipervisor.listDomainsID():
-			if id == 0:
-				#
-				# skip dom0
-				#
-				continue
-			
-			domU = hipervisor.lookupByID(id)
-			if domU.name() == host:
-				found = 1
-				break
-
-		state = 'nostate'
-
-		if found:
-			status = domU.info()[0]	
-
-			if status == libvirt.VIR_DOMAIN_NOSTATE:
-				state = 'nostate'
-			elif status == libvirt.VIR_DOMAIN_RUNNING or \
-					status == libvirt.VIR_DOMAIN_BLOCKED:
-				state = 'active'
-			elif status == libvirt.VIR_DOMAIN_PAUSED:
-				state = 'paused'
-			elif status == libvirt.VIR_DOMAIN_SHUTDOWN:
-				state = 'shutdown'
-			elif status == libvirt.VIR_DOMAIN_SHUTOFF:
-				state = 'shutoff'
-			elif status == libvirt.VIR_DOMAIN_CRASHED:
-				state = 'crashed'
-
-		return state
-
 
 	def listmacs(self, s, fe_name, status):
 
@@ -644,6 +590,7 @@ class Command(rocks.commands.start.service.command):
 		aliases = {}
 		macs = {}
 
+
 		for (name, mac, alias) in self.db.fetchall():
 			macs[name] = mac
 			if alias:
@@ -652,12 +599,14 @@ class Command(rocks.commands.start.service.command):
 				else:
 					aliases[name] = [alias]
 
+		if status:
+			vm = rocks.vmextended.VMextended(self.db)
+
 		for name in sorted(macs.keys()):
 			resp += macs[name] + ' '
 			if status:
 				state = 'nostate'
-				physnode = self.getPhysNode(name)
-				resp += self.getState(physnode, name) + ' '
+				resp += vm.getStatus(name) + ' '
 
 			resp += name
 			if name in aliases:

@@ -260,71 +260,42 @@ class Command(rocks.commands.start.service.command):
 		return (Database)
 
 
-	def getmacs(self, dst_mac):
+	def get_fename(self, host_name):
 		#
 		# return a list of all the MACs associated with this cluster
 		#
-		macs = []
+		fe_name = []
 
 		try:
-			host = self.db.getHostname(dst_mac)
+			host = self.db.getHostname(host_name)
 		except:
 			host = None
 		
 		if not host:
-			return macs
+			return fe_name
 
 		vm = rocks.vm.VM(self.db)
 		if vm.isVM(host):
 			#
-			# all the hosts associated with this host have
-			# the same vlan id
+			# get the cluster name
 			#
-			rows = self.db.execute("""select vlanid from networks
-				where mac = '%s' and vlanid > 0"""  % dst_mac)
+			rows = self.db.execute("""select cluster_name 
+				from clusters cl, nodes n, networks net 
+				where n.name = '%s' and n.id = net.node 
+				and cl.vlanid = net.vlanid"""  % host)
 
 			if rows == 0:
 				#
-				# it may be the case that the MAC is the MAC
-				# for the VM frontend and it is associated with
-				# the public connection. in this case, there is
-				# no vlan id.
+				# this is a virtual node belonging to the physical
+				# frontend, or it's a really bad error!!
 				#
-				# let's see if we can find a vlan id for the
-				# private network for this host
-				#
-				rows = self.db.execute("""select vlanid from
-					networks where node = (select id from
-					nodes where name = '%s') and subnet =
-					(select id from subnets where name =
-					'private') and vlanid is not NULL""" %
-					host)
+				print "airbos does not support turning on and off "\
+					"nodes which belongs to the physical frontend"
 
-			if rows == 0:
-				#
-				# this VM doesn't have a VLAN assigned to it.
-				# it may be controlled by a physical frontend,
-				# so just get the name and MAC from the
-				# database
-				#
-				rows = self.db.execute("""select n.name,
-					net.mac from networks net, nodes n
-					where net.node = n.id
-					and net.mac = '%s' """ % dst_mac)
 			elif rows > 0:
-				vlanid, = self.db.fetchone()
+				fe_name, = self.db.fetchone()
 
-				rows = self.db.execute("""select n.name,
-					net.mac from networks net, nodes n
-					where net.vlanid = %s and
-					net.node = n.id""" % vlanid)
-
-			if rows:
-				for client, mac in self.db.fetchall():
-					if vm.isVM(client):
-						macs.append(mac)
-
-		return macs
+		return fe_name
 
 
 	def getVNCport(self, client, physnode):
@@ -513,25 +484,14 @@ class Command(rocks.commands.start.service.command):
 		return (op, dst_mac)
 
 
-	def check_signature(self, clear_text, signature, macs):
+	def check_signature(self, clear_text, signature, fe_name):
 		#
-		# look through all the macs and see if there is match
-		# in the public_key table
+		# get the keys for this fe_name
 		#
-		rows = 0
-		for mac in macs:
-			host = self.db.getHostname(mac)
-			if not host:
-				continue
-
-			rows = self.db.execute("""select public_key from 
-				public_keys where node = (select id from nodes
-				where name = '%s') """ % host)
-
-			if rows > 0:
-				print '\tusing public key for host:\t%s' % host
-				sys.stdout.flush()
-				break
+		rows = self.db.execute("""select pk.public_key
+				from public_keys pk, nodes n
+				where pk.node = n.id and
+				n.name = '%s'""" % fe_name)
 
 		if rows == 0:
 			#
@@ -670,20 +630,40 @@ class Command(rocks.commands.start.service.command):
 		return state
 
 
-	def listmacs(self, s, macs, status):
+	def listmacs(self, s, fe_name, status):
+
+
 		resp = ''
+		self.db.execute("""select n.name, net.mac, ali.name as alias
+				from clusters cl, networks net, vm_nodes vmn, nodes n
+				left join aliases ali on n.id = ali.node
+				where n.id = net.node and n.id = vmn.node
+				and net.vlanid = cl.vlanid
+				and cl.cluster_name = '%s'""" % fe_name)
 
-		for mac in macs:
+		aliases = {}
+		macs = {}
+
+		for (name, mac, alias) in self.db.fetchall():
+			macs[name] = mac
+			if alias:
+				if name in aliases:
+					aliases[name].append(alias)
+				else:
+					aliases[name] = [alias]
+
+		for name in sorted(macs.keys()):
+			resp += macs[name] + ' '
 			if status:
-				client = self.db.getHostname(mac)
 				state = 'nostate'
-				if client:
-					physnode = self.getPhysNode(client)
-					state = self.getState(physnode, client)
-			else:
-				state = ''
+				physnode = self.getPhysNode(name)
+				resp += self.getState(physnode, name) + ' '
 
-			resp += '%s %s\n' % (mac, state)
+			resp += name
+			if name in aliases:
+				resp += ',' + ','.join(aliases[name])
+
+			resp += '\n'
 
 		self.sendresponse(s, 0, resp)
 
@@ -745,16 +725,16 @@ class Command(rocks.commands.start.service.command):
 		#
 		# check the signature
 		#
-		macs = self.getmacs(dst_mac)
+		fe_name = self.get_fename(dst_mac)
 
-		if macs == []:
+		if fe_name == []:
 			self.sendresponse(s, -1,
-				'MAC address %s not in database' % dst_mac)
+				'host %s not in database' % dst_mac)
 			s.close()
 			conn.close()
 			return
 
-		if self.check_signature(clear_text, signature, macs):
+		if self.check_signature(clear_text, signature, fe_name):
 			print '\tmessage signature is valid'
 			sys.stdout.flush()
 
@@ -767,9 +747,9 @@ class Command(rocks.commands.start.service.command):
 					'action=install'])
 				self.power(s, 'start', dst_mac)
 			elif op == 'list macs + status':
-				self.listmacs(s, macs, 1)
+				self.listmacs(s, fe_name, 1)
 			elif op == 'list macs':
-				self.listmacs(s, macs, 0)
+				self.listmacs(s, fe_name, 0)
 			elif op == 'console':
 				self.console(s, conn.fileno(), dst_mac)
 		else:

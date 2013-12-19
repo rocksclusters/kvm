@@ -66,6 +66,7 @@ import threading
 import signal
 import subprocess
 import shlex
+import _mysql_exceptions
 
 
 import rocks.vm

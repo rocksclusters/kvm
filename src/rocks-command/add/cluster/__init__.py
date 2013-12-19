@@ -271,6 +271,16 @@ class Command(rocks.commands.add.command):
 	Hosting machine for virtual frontend. Defaults to the physical frontend
 	</param>
 
+	<param type='bool' name='cluster-naming'>
+	If true it will name the compute nodes not based on the physical node
+	they are allocated but based on the fe-name.
+	If the frontend is called cluster the compute nodes will be named:
+	vm-cluster-0
+	vm-cluster-1
+	vm-cluster-2
+	etc.
+	</param>
+
 	<example cmd='add cluster 1.2.3.4 2'>
 	Create one frontend VM, assign it the IP address '1.2.3.4', and
 	create 2 compute node VMs.
@@ -397,7 +407,7 @@ class Command(rocks.commands.add.command):
 
 	def createComputes(self, vlan, subnet, computes, containers,
 		cpus_per_compute, mem_per_compute, 
-		disk_per_compute, virtType):
+		disk_per_compute, virtType, cluster_naming):
 
 		self.computenames = []
 		
@@ -411,13 +421,23 @@ class Command(rocks.commands.add.command):
 			host = containers[i % len(containers)]
 
 			self.addVlanToHost( host, vlan, subnet)
-			output = self.command('add.host.vm', [ host,
+			args = [ host,
 				'membership=Hosted VM', 'num-macs=1',
 				'cpus=%s' % cpus_per_compute,
 				'mem=%s' % mem_per_compute,
 				'disksize=%s' % disk_per_compute,
 				'vlan=%d' % vlan,
-				'sync-config=n', 'virt-type=%s' % virtType ] )
+				'sync-config=n', 'virt-type=%s' % virtType ]
+
+			if cluster_naming:
+				#
+				# compute nodes will be in the form of
+				# vm-fename-ID
+				#
+				args.append('name=vm-' + cluster_naming +\
+						'-%d' % i)
+
+			output = self.command('add.host.vm', args)
 
 			line = output.split()
 			if line[0] == 'added' and line[1] == 'VM':
@@ -469,7 +489,7 @@ class Command(rocks.commands.add.command):
 		#
 		(cpus_per_compute, mem_per_compute, disk_per_compute,
 			disk_per_frontend, container_hosts, vlan, subnet, gateway,
-			virtType,FEName, FEContainer) = \
+			virtType, FEName, FEContainer, cluster_naming) = \
 			self.fillParams(
 				[('cpus-per-compute', 1),
 				('mem-per-compute', 1024),
@@ -481,14 +501,19 @@ class Command(rocks.commands.add.command):
 				('gateway', None),
 				('virt-type','hvm'),
 				('fe-name',None),
-				('fe-container',self.getFrontend())
+				('fe-container',self.getFrontend()),
+				('cluster-naming', 'n')
 				])
 
-		
+	
+                cluster_naming = self.str2bool(cluster_naming)
+
+		if cluster_naming and not FEName:
+			self.abort("you must select a fe-name when using cluster-naming")
+
 		virtType=virtType.lower()
 		if virtType != 'hvm':
 			self.abort("KVM support only 'hvm' virtualization")
-		
 
 		if vlan:
 			try:
@@ -521,10 +546,14 @@ class Command(rocks.commands.add.command):
 		# create the compute nodes
 		#
 		if computes > 0 :
+			if cluster_naming:
+				cluster_naming = FEName
+			else:
+				cluster_naming = None
 			print "Creating %d Virtual Cluster nodes  --> " % computes 
 			self.createComputes(vlanid, subnet, computes, containers,
 				cpus_per_compute, mem_per_compute, 
-				disk_per_compute, virtType)
+				disk_per_compute, virtType, cluster_naming)
 			print "<-- Done."
 
 		#

@@ -95,11 +95,7 @@ class Command(rocks.commands.HostArgumentProcessor, rocks.commands.set.command):
 		if cdrom.lower() == 'none':
 			cdrom = ""
 		else:
-			# do the validation of the path
-			if not os.path.exists(cdrom):
-				self.abort('cdrom must be a valid path (%s)' % cdrom)
-
-			if cdrom[0] != '/':
+			if not os.path.isabs(cdrom):
 				self.abort('You must use an absolute path for the ISO')
 
 		hosts = self.getHostnames(args)

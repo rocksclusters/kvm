@@ -225,7 +225,6 @@ class Command(rocks.commands.report.host.command):
 		vmnodeid = None
 		mem = None
 		cpus = None
-		slice = None
 		macs = None
 		disks = None
 

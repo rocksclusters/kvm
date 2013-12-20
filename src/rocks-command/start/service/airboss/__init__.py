@@ -263,9 +263,10 @@ class Command(rocks.commands.start.service.command):
 
 	def get_fename(self, host_name):
 		#
-		# return a list of all the MACs associated with this cluster
+		# return the frontend name associated with this 
+		# host_name
 		#
-		fe_name = []
+		fe_name = ''
 
 		try:
 			host = self.db.getHostname(host_name)
@@ -436,6 +437,45 @@ class Command(rocks.commands.start.service.command):
 					continue
 
 		return
+
+	def cdrom(self, socket, dst_mac, op):
+		"""invoke the rocks set host vm cdrom"""
+
+		client = self.db.getHostname(dst_mac)
+
+		ops = op.split(' ')
+
+		if len(ops) == 1:
+			cmd = """/opt/rocks/bin/rocks set host vm cdrom %s cdrom='none'"""\
+					% client
+		elif len(ops) == 2:
+			filename = ops[1]
+			# TODO do more checking on the cdrom file name
+			if '..' in filename:
+				self.sendresponse(socket, -1, "invalid path")
+				return
+
+			cmd = """/opt/rocks/bin/rocks set host vm cdrom %s cdrom='%s'"""\
+                                        % (client, filename)
+		elif len(ops) > 2:
+			self.sendresponse(socket, -1, "invalid path")
+			return
+
+		p = subprocess.Popen(shlex.split(cmd),
+			stdin = subprocess.PIPE,
+			stdout = subprocess.PIPE,
+			stderr = subprocess.STDOUT)
+		p.wait()
+
+		response = ''
+		for line in p.stdout.readlines():
+			response += line
+
+		status = 0
+		if len(response) > 0:
+			status = -1
+
+		self.sendresponse(socket, status, response)
 
 
 	def power(self, s, action, dst_mac):
@@ -676,7 +716,7 @@ class Command(rocks.commands.start.service.command):
 		#
 		fe_name = self.get_fename(dst_mac)
 
-		if fe_name == []:
+		if fe_name == '':
 			self.sendresponse(s, -1,
 				'host %s not in database' % dst_mac)
 			s.close()
@@ -701,6 +741,12 @@ class Command(rocks.commands.start.service.command):
 				self.listmacs(s, fe_name, 0)
 			elif op == 'console':
 				self.console(s, conn.fileno(), dst_mac)
+			elif op.startswith('cdrom'):
+				self.cdrom(s, dst_mac, op)
+			else:
+				print '\tcommand is invalid'
+				sys.stdout.flush()
+				self.sendresponse(s, -1, 'command is invalid')
 		else:
 			print '\tmessage signature is invalid'
 			sys.stdout.flush()

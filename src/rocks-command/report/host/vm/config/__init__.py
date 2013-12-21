@@ -204,10 +204,10 @@ class Command(rocks.commands.report.host.command):
 			xmlconfig.append("<on_reboot>destroy</on_reboot>")
 		else:
 			#we boot the machine as if normal hardware
-			xmlconfig.append("  <boot dev='network'/>")
-			xmlconfig.append("  <boot dev='hd'/>")
 			if cdrom :
 				xmlconfig.append("  <boot dev='cdrom'/>")
+			xmlconfig.append("  <boot dev='network'/>")
+			xmlconfig.append("  <boot dev='hd'/>")
 			xmlconfig.append("  <bootmenu enable='yes'/>")
 			xmlconfig.append("</os>")
 

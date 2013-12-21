@@ -2,8 +2,30 @@
 	<title>Advanced Configuration</title>
 
 <para>
-
+Since Rocks version 6.2 several attributes can be used to customize the 
+virtual hardware of the VM. 
 </para>
+
+<warning>
+<para>
+Since attribute values will be used inside an XML file during the kickstart
+generation they need to be properly escaped following XML escaping roule 
+(only the characters  &gt;, &lt; and &amp; will be escaped).
+For this reason attibute value might appear different when running 
+rocks list host attr.
+</para>
+</warning>
+
+<warning>
+<para>
+Since attribute values will be used inside an XML file during the kickstart
+generation they need to be properly escaped following XML escaping roule 
+(only the characters  &gt;, &lt; and &amp; will be escaped).
+For this reason attibute value might appear different when running 
+rocks list host attr.
+</para>
+</warning>
+
 
 <section>
 <title>Defining Virtual CPU Types</title>
@@ -75,6 +97,114 @@ Then the xml used for libvirt will be:
 
 </section>
 
+
+
+
+<section>
+<title>Pinning CPUs</title>
+
+<para>
+Using the attribute <filename>kvm_cpu_pinning</filename> it is 
+now possible to pin virtual CPUs to the physical CPUs.
+If the value of the attribute is <filename>pin_all</filename>
+each virtual cpu will be automatically pinned to the corresponding 
+physical CPUs. This mode is good only if you have 1 VM for each 
+physical machine, since the pinning will always start from physical 
+core 0. 
+Every other value used in this attribute will be dumped in the final 
+libvirt xml as a child of the &lt;domain&gt; root tag.
+</para>
+
+<para>
+For example the following command will pin vritual CPU 0 to physical CPU
+4, vritual CPU 1 to physical CPU 5, vritual CPU 2 to physical CPU 6 and 
+vritual CPU 3 to physical CPU 7 on VM called hosted-vm-0-2-0.
+</para>
+
+<screen>
+<![CDATA[
+rocks set host attr hosted-vm-0-2-0 kvm_cpu_pinning value='<cputune>
+    <vcpupin vcpu="0" cpuset="4"/>
+    <vcpupin vcpu="1" cpuset="5"/>
+    <vcpupin vcpu="2" cpuset="6"/>
+    <vcpupin vcpu="3" cpuset="7"/>
+  </cputune>'
+]]>
+</screen>
+
+</section>
+
+
+
+<section>
+<title>Defining Hardware Devices</title>
+
+<para>
+Using the attributes called <filename>kvm_device_%d</filename> 
+where the %d can be an integer going from 0 up, it is possible 
+to add &gt;devices&lt; lines to a VM to fine tune the hardware 
+devices which will be presented to the VM (for more info on 
+the syntax which can be used please refer to the 
+<ulink url="http://libvirt.org/formatdomain.html#elementsDevices">
+Libvirt Documentation</ulink>)
+</para>
+<para>
+For example the following command will assign the PCI slot 2 bus 6 and function 0 
+to the VM hosted-vm-0-2-0.
+</para>
+
+<screen>
+<![CDATA[
+rocks set host attr hosted-vm-0-2-0 kvm_device_0 value='<hostdev mode='subsystem' type='pci' managed='yes'>
+  <source>
+    <address bus='0x06' slot='0x02' function='0x0'/>
+  </source>
+</hostdev>'
+]]>
+</screen>
+</section>
+
+
+
+
+<section>
+<title>Mounting CDROM</title>
+
+<para>
+Using the command <filename>rocks set host vm cdrom</filename>
+it is now possible attach CDROM to VM. The path specified 
+in the cdrom attribute must exist on the physical container 
+of the Virtual Machine.
+When a CDROM is attached the boot order of the machine is 
+changed so that the CDROM will be first then it will try 
+the network and then the hard disk.
+After the CDROM path has been changed with 
+<filename>rocks set host vm cdrom</filename>
+the virtual machine has to be powered off and restarted 
+with rocks start host vm in order to make effective 
+the changes.
+</para>
+</section>
+
+
+<section>
+<title>Host Autorestart</title>
+
+<para>
+If a virtaul machine has the attribute 
+<filename>kvm_autostart</filename> defined with a value equal to true
+it will be automatically restart if the physical container is rebooted.
+
+If the physical container is properly shut down the Virtual Machine will 
+be paused and saved to disk, and when the physical container restarts
+the VM will be properly restored automatically.
+
+If the physical container is unplugged from the power (hard shutdown)
+the virtual machine will crash like the physical container and it will 
+be automatically restarted through a normal boot when the physical 
+container is restarted.
+</para>
+</section>
 
 </section>
 

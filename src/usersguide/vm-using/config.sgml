@@ -206,5 +206,19 @@ container is restarted.
 </para>
 </section>
 
+<section>
+<title>Running VM on different appliances</title>
+
+<para>
+Starting with Rocks 6.2 it is possible to run virtual machine on every type
+of node, for example you can have compute nodes which runs virtual machines.
+VM Containers are automatically enabled but if the user wants to enable a generic
+node to run virtual machines it must set the attribute kvm equal to true, and
+then re-install the node. After the re-installation the node will be able to host
+virtual machines.
+</para>
+</section>
+
+
 </section>
 

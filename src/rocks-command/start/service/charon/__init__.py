@@ -171,7 +171,7 @@ class Command(rocks.commands.start.service.command):
 		signal.signal(signal.SIGUSR1, signalUsr1Handler)
 
 		if not os.path.exists(os.path.dirname(pidfile)):
-			os.mkdirs(os.path.dirname(pidfile))
+			os.makedirs(os.path.dirname(pidfile))
 		fd = open(pidfile,'w')
 		fd.write(str(os.getpid()))
 		fd.close()

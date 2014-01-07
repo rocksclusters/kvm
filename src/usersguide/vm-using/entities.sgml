@@ -5,3 +5,4 @@
 <!ENTITY pilot SYSTEM "pilot.sgml">
 <!ENTITY network SYSTEM "network.sgml">
 <!ENTITY config SYSTEM "config.sgml">
+<!ENTITY tutorial SYSTEM "tutorial.sgml">

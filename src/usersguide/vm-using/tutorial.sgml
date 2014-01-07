@@ -1,0 +1,268 @@
+<section id="tutorial" xreflabel="Advanced Tutorial">
+	<title>Tutorial on Advanced Configuration</title>
+
+<para>
+Since Rocks version 6.2 the kvm roll support plugins which are called
+at VMs startup and shutdown. Thanks to this users can customize several
+aspects of VM storage and networking. In the follwoing example we show
+how to use a central NAS as a repository for VM images using Network Block
+Device.
+</para>
+
+<para>
+The two example plugin scripts included in this tutorial are called each time
+a VM is started and stopped. Using this plugin script functionality it is even
+possible to relocate a VM to another physical host right before the virtual 
+machine is booted.
+</para>
+
+<warning>
+<para>
+This tutorial is only meant as an example for showing how to build more advanced
+system using the KVM roll. There are more advanced protocol which should be
+considered to build such a system (e.g. ISCSI protocol).
+</para>
+</warning>
+
+<warning>
+<para>
+With this tutorial it is possible to host only 1 virtual machine for each
+physical host.
+</para>
+</warning>
+
+
+
+<section>
+<title>Preparing clients</title>
+
+<para>
+This tutorial is using compute node to run the Virtual Machine (this is simply
+to demonstrate the functionality of the kvm attribute).
+To run NBD client is necessary to update the kernel (the CentOS kernel
+does not have the NBD module compiled in). To this extend run the following:
+</para>
+
+<screen>
+<![CDATA[
+ yumdownloader --enablerepo elrepo-kernel  kernel-lt.x86_64
+ cp kernel-lt-3.10.25-1.el6.elrepo.x86_64.rpm /export/rocks/install/contrib/6.1/x86_64/RPMS/
+ yumdownloader --enablerepo epel  nbd
+ cp nbd-2.9.20-7.el6.x86_64.rpm /export/rocks/install/contrib/6.1/x86_64/RPMS/
+ cd /export/rocks/install/site-profiles/6.1/nodes/
+ cp skeleton.xml extend-compute.xml
+ vi extend-compute.xml
+]]>
+</screen>
+
+<para>
+and add the following lines to the package section:
+</para>
+
+<screen>
+<![CDATA[
+ <package>kernel-lt.x86_64</package>
+ <package>nbd</package>
+]]>
+</screen>
+
+<para>
+rebuild the distribution set the attribute (so that compute node 
+will be able to host VMs) and reinstall the compute nodes:
+</para>
+<screen>
+ cd /export/rocks/install/
+ rocks create distro
+ rocks set appliance attr compute kvm true 
+ rocks set appliance attr compute kvm_autostart true
+ rocks run host compute "/boot/kickstart/cluster-kickstart-pxe"
+</screen>
+</section>
+
+
+<section>
+<title>Creating the virtual cluster and allocating storage</title>
+
+<para>
+We create a virtual cluster with two compute node and then we change 
+the default disk setting of all the nodes. The virtual cluster 
+internal names are rocks-216, vm-rocks-216-0 and vm-rocks-216-1.
+</para>
+
+<screen>
+<![CDATA[
+ rocks add cluster 123.123.123.216 2 cluster-naming=true container-hosts="compute-0-0 compute-0-1" fe-name=rocks-216
+Getting Free VLAN --> 
+<-- Done
+Creating Virtual Frontend on Physical Host rocks-152 --> 
+        created frontend VM named: rocks-216
+<-- Done.
+Creating 2 Virtual Cluster nodes  --> 
+        created compute VM named: vm-rocks-216-0
+        created compute VM named: vm-rocks-216-1
+<-- Done.
+Syncing Network Configuration --> 
+<-- Done.
+
+ rocks set host vm rocks-216 disk="phy:/dev/nbd0,vda,virtio"
+ rocks set host vm vm-rocks-216-0 disk="phy:/dev/nbd0,vda,virtio"
+ rocks set host vm vm-rocks-216-1 disk="phy:/dev/nbd0,vda,virtio"
+]]>
+</screen>
+
+<para>
+For this tutorial we assume there is a nas-0-0 with preinstalled zfs 
+with a pool with enough capacity called /testpool. The script exepct to 
+find a preallocated zvol called /testpool/test-vm/hostname.
+To preallocate all the required space for the tree virtual machine we 
+run the commands:
+</para>
+
+<screen>
+<![CDATA[
+ ssh nas-0-0
+ zfs create testpool/test-vm
+ zfs create -V 35G testpool/test-vm/rocks-216
+ zfs create -V 35G testpool/test-vm/vm-rocks-216-0
+ zfs create -V 35G testpool/test-vm/vm-rocks-216-1
+ exit
+]]>
+</screen>
+
+<para>
+Rename the following files on your frontend:
+</para>
+
+<screen>
+ cd /opt/rocks/lib/python2.6/site-packages/rocks/commands/start/host/vm
+ mv plugin_example_allocate.py plugin_allocate.py
+ cd /opt/rocks/lib/python2.6/site-packages/rocks/commands/stop/host/vm
+ mv plugin_example_disallocate.py plugin_disallocate.py
+</screen>
+
+<para>
+And put the following content into plugin_allocate.py:
+</para>
+
+<screen>
+<![CDATA[
+#
+#
+import rocks.commands
+
+
+class Plugin(rocks.commands.Plugin):
+
+
+	nas_server = 'nas-0-0'
+	device_base_path = '/dev/zvol/testpool/test-vm/'
+
+	def provides(self):
+		return 'allocate'
+
+	def run(self, host):
+
+		#
+		# we need to find a free port on the server for this nbd-server
+		#
+		ports = []
+		output = self.owner.command('run.host', [self.nas_server, """netstat -lnt""", "collate=true"])
+		for line in output.split('\n'):
+			tokens = line.split()
+			if len(tokens) > 3 and tokens[0].startswith('tcp') \
+					and len(tokens[3].split(':')) > 1:
+				ports.append(tokens[3].split(':')[1])
+		port = 0
+		for i in range(2000,2200):
+			if '%s' % i not in ports:
+				port = i
+				break
+		if port == 0:
+			self.owner.abort('unable to find a free port')
+		port = str(port)
+
+		vm = rocks.vmextended.VMextended(self.owner.db)
+		(physnodeid, physhost) = vm.getPhysNode(host)
+		if not physhost:
+			self.owner.abort("Unable to find the container for host %s" % host)
+
+
+		#
+		# let's start the server
+		cmd = 'nbd-server ' + self.nas_server + '.local@' + port + ' ' + self.device_base_path + host
+		self.owner.command('run.host', [self.nas_server, cmd, "collate=true"])
+		# and the client
+		cmd = 'modprobe nbd; nbd-client ' + self.nas_server + '.local ' + port + ' /dev/nbd0'
+		self.owner.command('run.host', [physhost, cmd, "collate=true"])
+
+		return 
+
+]]>
+</screen>
+
+<para>
+And put the following content into plugin_disallocate.py:
+</para>
+
+<screen>
+<![CDATA[
+#
+
+import rocks.commands
+import rocks.vmextended
+
+class Plugin(rocks.commands.Plugin):
+
+	nas_server = 'nas-0-0'
+	device_base_path = '/dev/zvol/testpool/test-vm/'
+
+	def provides(self):
+		return 'disallocate'
+
+	def run(self, host):
+		# here you can disallovate the resource used by your VM
+		# in rocks DB
+
+		vm = rocks.vmextended.VMextended(self.owner.db)
+		(physnodeid, physhost) = vm.getPhysNode(host)
+
+		# first let kill the clinet
+		self.owner.command('run.host', [physhost, 'nbd-client -d /dev/nbd0'])
+		# then the server
+		self.owner.command('run.host', [self.nas_server, 'pkill -f "nbd-server.*' \
+				+ self.device_base_path + host + '"'])
+
+		return 
+]]>
+</screen>
+
+</section>
+
+
+
+
+
+<section>
+<title>Using the Virtual Cluster</title>
+
+<para>
+To start the cluster you can use the satndard Rocks command
+</para>
+
+<screen>
+ rocks start host vm rocks-216
+</screen>
+
+<para>
+Install the frontend and then run insert-ehter on the vritual frontend 
+and turn on the compute nodes.
+</para>
+
+<screen>
+  rocks start host vm vm-rocks-216-0
+  rocks start host vm vm-rocks-216-1
+</screen>
+
+</section>
+</section>
+

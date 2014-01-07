@@ -206,7 +206,7 @@ container is restarted.
 </para>
 </section>
 
-<section>
+<section id="kvm_attr">
 <title>Running VM on different appliances</title>
 
 <para>

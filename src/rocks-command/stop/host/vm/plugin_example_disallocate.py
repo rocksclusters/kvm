@@ -61,10 +61,10 @@ import rocks.commands
 class Plugin(rocks.commands.Plugin):
 
 	def provides(self):
-		return 'allocate'
+		return 'disallocate'
 
 	def run(self, host):
-		# here you can disallovate the resource used by your VM
+		# here you can disallocate the resource used by your VM
 		# in rocks DB
 		return 
 

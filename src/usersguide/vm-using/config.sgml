@@ -1,20 +1,82 @@
 <section id="config" xreflabel="Configuring Virtual Machine">
 	<title>Advanced Configuration</title>
-
 <para>
-Since Rocks version 6.2 several attributes can be used to customize the 
-virtual hardware of the VM. 
+In this section we present several enancements introduced with Rocks 6.2
+which allow greater control of the virtualization functionalities.
 </para>
 
-<warning>
+
+<section>
+<title>Startup and Shutdown Plugins</title>
+
 <para>
-Since attribute values will be used inside an XML file during the kickstart
-generation they need to be properly escaped following XML escaping roule 
-(only the characters  &gt;, &lt; and &amp; will be escaped).
-For this reason attibute value might appear different when running 
-rocks list host attr.
+The KVM roll allows users to define custom plugins which are invoked at each 
+VM startup and shutdown. The plugins can be used to re-allocate the VM on 
+different physiscal container or to mount and unmount storage system for 
+the VM images, or to change some hardware feature of the VM before it is 
+booted.
 </para>
-</warning>
+
+<para>
+There are two different startup plugin which are triggered in different stages
+of the startup process.  They both reside in
+<filename>/opt/rocks/lib/python2.6/site-packages/rocks/commands/start/host/vm</filename>
+and they must be called as indicated below.
+</para>
+
+<variablelist>
+
+	<varlistentry>
+	<term><varname>plugin_allocate.py</varname></term>
+	<listitem>
+	<para>
+	This script is invoked before the virtual machine is started and
+	at this stage it is still possible to make modification to the rocks database.
+	This means that it is still possible to modify the physical container of the 
+	virtual machine or its networking configuration.
+	</para>
+	</listitem>
+	</varlistentry>
+
+	<varlistentry>
+	<term><varname>plugin_preboot.py</varname></term>
+	<listitem>
+	<para>
+	This script is invoked before the virtual machine is started but 
+	at this stage it is not possible to make modification to the rocks 
+	database. The virtual machine can not be relocated anymore a different 
+	VM container. If this scirpt return a string it will be used as the libvirt 
+	XML startup. This means that it is still possible to make temporary changes 
+	to the hardware of the virtual machine.
+	</para>
+	</listitem>
+	</varlistentry>
+
+</variablelist>
+
+<para>
+There is one shutdown plugin which should be placed in:
+<filename>/opt/rocks/lib/python2.6/site-packages/rocks/commands/stop/host/vm</filename>
+The shutdown plugin must be called <filename>plugin_disallocate.py</filename> in order 
+to be invoked. This script is invoked after the virtual machine is shutdown and it should
+release the resources allocated by the two previous scirpts.
+</para>
+
+<para>
+The daemon process <filename>charon</filename> is in charge of monitoring the various physical 
+containers and of notifying the <filename>plugin_disallocate.py</filename> when a node is 
+powered off.
+</para>
+
+</section>
+
+
+<section>
+<title>Fine tuning of virtual hardware</title>
+
+<para>
+Several attributes can be used to customize the virtual hardware of the VM. 
+</para>
 
 <warning>
 <para>
@@ -50,7 +112,6 @@ It is not possible to use the cpu_match attribute described below when in this m
 </para>
 </listitem>
 
-
 <listitem>
 <para>
 host-passthrough: With this mode, the CPU visible to the guest should be exactly the same 
@@ -62,8 +123,6 @@ mode.
 </listitem>
 
 </itemizedlist>
-
-
 
 <para>
 The attribute cpu_match can be used to specify a specific topology or model type for the cpu.
@@ -80,11 +139,9 @@ exact: <model fallback='allow'>core2duo</model><vendor>Intel</vendor><topology s
 ]]>
 </screen>
 
-
 <para>
 Then the xml used for libvirt will be:
 </para>
-
 
 <screen>
 <![CDATA[
@@ -94,10 +151,7 @@ Then the xml used for libvirt will be:
 ]]>
 </screen>
 
-
 </section>
-
-
 
 
 <section>
@@ -135,7 +189,6 @@ rocks set host attr hosted-vm-0-2-0 kvm_cpu_pinning value='<cputune>
 </section>
 
 
-
 <section>
 <title>Defining Hardware Devices</title>
 
@@ -163,8 +216,6 @@ rocks set host attr hosted-vm-0-2-0 kvm_device_0 value='<hostdev mode='subsystem
 ]]>
 </screen>
 </section>
-
-
 
 
 <section>
@@ -206,6 +257,7 @@ container is restarted.
 </para>
 </section>
 
+
 <section id="kvm_attr">
 <title>Running VM on different appliances</title>
 
@@ -217,6 +269,9 @@ node to run virtual machines it must set the attribute kvm equal to true, and
 then re-install the node. After the re-installation the node will be able to host
 virtual machines.
 </para>
+</section>
+
+
 </section>
 
 

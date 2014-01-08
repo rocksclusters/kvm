@@ -259,9 +259,23 @@ and turn on the compute nodes.
 </para>
 
 <screen>
-  rocks start host vm vm-rocks-216-0
-  rocks start host vm vm-rocks-216-1
+ rocks start host vm vm-rocks-216-0
+ rocks start host vm vm-rocks-216-1
 </screen>
+
+<para>
+If the virtual compute node are shut down, the user can relocate them on 
+a different physical host using the following command:
+</para>
+
+<screen>
+ rocks set host vm vm-rocks-216-1 physnode=compute-0-0
+</screen>
+
+<para>
+When vm-rocks-216-1 will be restarted (with rocks start host vm) it will
+be automatically migrated on the new physical host compute-0-0
+</para>
 
 </section>
 </section>

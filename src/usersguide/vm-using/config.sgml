@@ -177,11 +177,11 @@ vritual CPU 3 to physical CPU 7 on VM called hosted-vm-0-2-0.
 
 <screen>
 <![CDATA[
-rocks set host attr hosted-vm-0-2-0 kvm_cpu_pinning value='<cputune>
-    <vcpupin vcpu="0" cpuset="4"/>
-    <vcpupin vcpu="1" cpuset="5"/>
-    <vcpupin vcpu="2" cpuset="6"/>
-    <vcpupin vcpu="3" cpuset="7"/>
+rocks set host attr hosted-vm-0-2-0 kvm_cpu_pinning value='<cputune>\
+    <vcpupin vcpu="0" cpuset="4"/>\
+    <vcpupin vcpu="1" cpuset="5"/>\
+    <vcpupin vcpu="2" cpuset="6"/>\
+    <vcpupin vcpu="3" cpuset="7"/>\
   </cputune>'
 ]]>
 </screen>
@@ -208,10 +208,10 @@ to the VM hosted-vm-0-2-0.
 
 <screen>
 <![CDATA[
-rocks set host attr hosted-vm-0-2-0 kvm_device_0 value='<hostdev mode='subsystem' type='pci' managed='yes'>
-  <source>
-    <address bus='0x06' slot='0x02' function='0x0'/>
-  </source>
+rocks set host attr hosted-vm-0-2-0 kvm_device_0 value='<hostdev mode='subsystem' type='pci' managed='yes'>\
+  <source>\
+    <address bus='0x06' slot='0x02' function='0x0'/>\
+  </source>\
 </hostdev>'
 ]]>
 </screen>

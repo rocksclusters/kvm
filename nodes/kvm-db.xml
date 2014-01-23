@@ -62,7 +62,7 @@ WHERE n.id = net.node AND n.id = vmn.node
 
 </file>
 
-/opt/rocks/bin/mysql --defaults-extra-file=/root/.rocks.my.cnf \
+/opt/rocks/mysql/bin/mysql --defaults-extra-file=/root/.rocks.my.cnf \
 	--user=root cluster &lt; /tmp/kvm-tables.sql
 
 /opt/rocks/sbin/rocks-db-perms

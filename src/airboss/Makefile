@@ -1,4 +1,5 @@
-# $Id: Makefile,v 1.5 2012/11/27 00:49:07 phil Exp $
+#
+# $Id: Makefile,v 1.5 2012/11/27 00:49:37 phil Exp $
 #
 # @Copyright@
 # 
@@ -54,18 +55,32 @@
 # 
 # @Copyright@
 #
+# $Log: Makefile,v $
+# Revision 1.5  2012/11/27 00:49:37  phil
+# Copyright Storm for Emerald Boa
+#
+# Revision 1.4  2012/05/06 05:49:49  phil
+# Copyright Storm for Mamba
+#
+# Revision 1.3  2011/07/23 02:31:42  phil
+# Viper Copyright
+#
+# Revision 1.2  2010/09/07 23:53:32  bruno
+# star power for gb
+#
+# Revision 1.1  2010/08/04 23:37:44  bruno
+# in with the airboss, out with the vm controller
+#
+#
 
+REDHAT.ROOT	= $(CURDIR)/../../
 
-ARCH=$(shell ../_arch)
+-include $(ROCKSROOT)/etc/Rules.mk
+include Rules.mk
 
-SRCDIRS = `find . -maxdepth 1 -type d -not -name CVS -not -name .`
+build:
+	echo Nothing to build
 
-default:	rpm
-
-copyright rpm clean::
-	for i in $(SRCDIRS) ; do \
-		cd $$i || exit 2 ; \
-		$(MAKE) $@ || exit 2 ; \
-		cd -; \
-	done
-
+install::
+	mkdir -p $(ROOT)/$(PKGROOT)
+	install -m 755 rocks-airboss $(ROOT)/$(PKGROOT)/

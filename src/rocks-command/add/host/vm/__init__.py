@@ -596,6 +596,11 @@ class Command(rocks.commands.HostArgumentProcessor, rocks.commands.add.command):
 		max = 0
 		if rows > 0:
 			for m, in self.db.fetchall():
+
+				if len(m) > 18:
+					# skip IB mac addresses from this algorithm
+					continue
+
 				mac = self.makeOctets(m)
 
 				i = 0

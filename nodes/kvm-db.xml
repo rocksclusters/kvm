@@ -32,7 +32,7 @@ CREATE TABLE vm_nodes (
 	Virt_Type	varchar(64) default NULL,
 	cdrom_path      varchar(512) default '',
 	PRIMARY KEY (ID)
-) TYPE=MyISAM;
+);
 
 DROP TABLE IF EXISTS vm_disks;
 CREATE TABLE vm_disks (
@@ -45,7 +45,7 @@ CREATE TABLE vm_disks (
 	Mode		varchar(64) default NULL,
 	Size		int(11) NOT NULL default '0',
 	PRIMARY KEY (ID)
-) TYPE=MyISAM;
+);
 
 
 --

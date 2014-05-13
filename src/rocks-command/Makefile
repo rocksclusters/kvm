@@ -73,7 +73,9 @@ install::
 	install -m444 vmconstant.py $(ROOT)/$(PY.ROCKS)/rocks/
 	install -m444 vmextended.py $(ROOT)/$(PY.ROCKS)/rocks/
 	install -m755 rocks-create-vm-disks $(ROOT)/$(PKGROOT)/bin
-	find $(ROOT)/$(PY.ROCKS)/rocks/commands -name "*.py" | awk \
-		'{ print "\nRollName = \"$(ROLL)\"" >> $$1; }'
+	for i in `find $(ROOT)/$(PY.ROCKS)/rocks/commands -name "*.py"`; do\
+		grep "^RollName = " $$i > /dev/null ||                              \
+		echo -e "\nRollName = \"$(ROLL)\"" >> $$i;              \
+	done
 	find $(ROOT) -type d -exec chmod a+rx {} \;
 

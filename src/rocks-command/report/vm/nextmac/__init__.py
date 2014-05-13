@@ -74,6 +74,8 @@
 #
 
 import rocks.commands
+import rocks.commands.add.host.vm
+
 
 class Command(rocks.commands.report.command):
 	"""
@@ -84,123 +86,12 @@ class Command(rocks.commands.report.command):
 
 	"""
 
-	def makeOctets(self, str):
-		#
-		# this code is lifted from 'add host vm'
-		#
-		octets = []
-		for a in str.split(':'):
-			octets.append(int(a, 16))
-
-		return octets
-
-
-	def getNextMac(self):
-		#
-		# this code is lifted from 'add host vm'
-		#
-		# find the next free VM MAC address in the database
-		#
-
-		#
-		# get the VM MAC base addr and its mask
-		#
-		rows = self.db.execute("""select value from global_attributes
-			where attr = 'vm_mac_base_addr' """)
-
-		if rows > 0:
-			vm_mac_base_addr, = self.db.fetchone()
-			base_addr = self.makeOctets(vm_mac_base_addr)
-		else:
-			self.abort('no VM MAC base address is defined')
-
-		rows = self.db.execute("""select value from global_attributes
-			where attr = 'vm_mac_base_addr_mask' """)
-
-		if rows > 0:
-			vm_mac_base_addr_mask, = self.db.fetchone()
-			mask = self.makeOctets(vm_mac_base_addr_mask)
-		else:
-			self.abort('no VM MAC base address mask is defined')
-
-		rows = self.db.execute("""select mac from networks where
-			mac is not NULL""")
-
-		max = 0
-		if rows > 0:
-			for m, in self.db.fetchall():
-				mac = self.makeOctets(m)
-
-				i = 0
-				match = 1
-				for a in base_addr:
-					if (base_addr[i] & mask[i]) != \
-							(mac[i] & mask[i]):
-						match = 0
-						break
-					i += 1
-
-				if match == 0:
-					continue
-
-				i = 0
-				x = 0
-				for a in range(len(mac) - 1, -1, -1):
-					y = (mac[a] * (2 ** (8 * i)))
-					x += y
-					i += 1
-					
-				if x > max:
-					max = x
-
-		newmac = []
-
-		if max == 0:
-			#
-			# this is the first assignment, use the base_addr as
-			# the mac address
-			#
-			for a in base_addr:
-				newmac.append('%02x' % a)
-		else:
-			max += 1
-
-			#
-			# now convert the integer into a mac address
-			#
-			i = 0
-			bitmask = 0xff
-			for a in range(len(mac) - 1, -1, -1):
-				x = (max & bitmask) >> (8 * i)
-				if a == 0:
-					#
-					# special case for the first MAC octet.
-					#
-					# the first bit should be zero (the
-					# multicast bit).
-					#
-					if (x & 0x1) == 1:
-						x += 1
-
-					# 
-					# the second bit should be one (the
-					# locally administered bit).
-					#
-					if (x & 0x2) == 0:
-						x |= 0x2
-					
-				newmac.append('%02x' % x)
-				bitmask = bitmask << 8 
-				i += 1
-
-			newmac.reverse()
-
-		return ':'.join(newmac)
-
 
 	def run(self, params, args):
 		self.beginOutput()
-		self.addOutput('', self.getNextMac())
+		c = rocks.commands.add.host.vm.Command(self.newdb)
+		mac = c.getNextMac()
+		self.addOutput('', mac)
 		self.endOutput(padChar='')
 	
 

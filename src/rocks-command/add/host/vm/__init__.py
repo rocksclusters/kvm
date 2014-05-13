@@ -572,23 +572,20 @@ class Command(rocks.commands.HostArgumentProcessor, rocks.commands.add.command):
 		#
 		# get the VM MAC base addr and its mask
 		#
-		rows = self.db.execute("""select value from global_attributes
-			where attr = 'vm_mac_base_addr' """)
+		globalAttr = self.newdb.getCategoryAttrs('global', 'global')
 
-		if rows > 0:
-			vm_mac_base_addr, = self.db.fetchone()
-			base_addr = self.makeOctets(vm_mac_base_addr)
-		else:
+		
+		for a in globalAttr:
+			if a.attr ==  'vm_mac_base_addr':
+				base_addr = self.makeOctets(a.value)
+			elif a.attr == 'vm_mac_base_addr_mask':
+				mask = self.makeOctets(a.value)
+
+		if not mask:
+			self.abort('no VM MAC base address mask is defined')
+		if not base_addr:
 			self.abort('no VM MAC base address is defined')
 
-		rows = self.db.execute("""select value from global_attributes
-			where attr = 'vm_mac_base_addr_mask' """)
-
-		if rows > 0:
-			vm_mac_base_addr_mask, = self.db.fetchone()
-			mask = self.makeOctets(vm_mac_base_addr_mask)
-		else:
-			self.abort('no VM MAC base address mask is defined')
 
 		rows = self.db.execute("""select mac from networks where
 			mac is not NULL""")

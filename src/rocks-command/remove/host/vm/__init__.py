@@ -131,14 +131,19 @@ def handler(ctxt, err):
 
 class Command(rocks.commands.remove.host.command):
 	"""
-	Remove the configuration info in the database for the supplied hosts.
+	Remove only some information (regarding a virtual machine)
+	from the database for the supplied hosts.
+	This command should not be used to delete a virtual machine
+	from the rocks DB (it is only for internal use).
+	Use rocks remove host instead.
 
 	<arg type='string' name='host' repeat='1'>
 	A list of one or more VM host names.
 	</arg>
 
-	<example cmd='remove host vm compute-0-0-0'>
-	Remove the configuration info in the database for compute-0-0-0.
+	<example cmd='remove host compute-0-0-0'>
+	To remove the host compute-0-0-0 from the database.
+	Do not use rocks remove host vm (this command) to remove a host.
 	</example>
 	"""
 

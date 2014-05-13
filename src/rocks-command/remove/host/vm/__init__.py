@@ -184,11 +184,15 @@ class Command(rocks.commands.remove.host.command):
 			#
 
 			libvirt.registerErrorHandler(handler, 'context')
-			hipervisor = libvirt.open(rocks.vmconstant.connectionURL % physhost)
 			try:
+				hipervisor = libvirt.open(rocks.vmconstant.connectionURL \
+						% physhost)
 				dom = hipervisor.lookupByName(host)
 				dom.undefine()
 			except libvirt.libvirtError, m:
+				if 'unable to connect' in str(m):
+					# connection problem just report it do not fail
+					print "Warning (libvirt): ", m
 				# the domain was not defined, no big deal
 				pass
 

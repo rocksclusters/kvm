@@ -31,7 +31,9 @@ CREATE TABLE vm_nodes (
 	Slice		int(11) NOT NULL default '0',
 	Virt_Type	varchar(64) default NULL,
 	cdrom_path      varchar(512) default '',
-	PRIMARY KEY (ID)
+	PRIMARY KEY(ID),
+	FOREIGN KEY(node) REFERENCES nodes(id) ON DELETE CASCADE,
+	FOREIGN KEY(PhysNode) REFERENCES nodes(id) ON DELETE SET NULL
 );
 
 DROP TABLE IF EXISTS vm_disks;
@@ -44,7 +46,8 @@ CREATE TABLE vm_disks (
 	Device		varchar(512) default NULL,
 	Mode		varchar(64) default NULL,
 	Size		int(11) NOT NULL default '0',
-	PRIMARY KEY (ID)
+	PRIMARY KEY (ID),
+	FOREIGN KEY(Vm_Node) REFERENCES vm_nodes(id) ON DELETE CASCADE
 );
 
 

@@ -109,9 +109,9 @@ class VMextended(rocks.vm.VM):
 		try:
 			import rocks.vmconstant
 			hipervisor = libvirt.open(rocks.vmconstant.connectionURL % physhost)
-		except:
-			import traceback
-			traceback.print_exc()
+		except libvirt.libvirtError:
+			#import traceback
+			#traceback.print_exc()
 			return 'nostate-error'
 
 		found = 0

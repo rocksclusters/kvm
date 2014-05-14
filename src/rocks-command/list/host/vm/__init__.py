@@ -178,117 +178,86 @@ class Command(rocks.commands.list.host.command):
 		showdisks = self.str2bool(showdisks)
 		showstatus = self.str2bool(showstatus)
 
-		hosts = self.getHostnames(args)
-
 		vmlib = rocks.vmextended.VMextended(self.db)
 
 		self.beginOutput()
 
-		for host in hosts:
-			vmnodeid = None
-			mem = None
-			cpus = None
-			slice = None
-			macs = None
-			disks = None
-			physhost = None
+		#
+		# one query does it all!!
+		# with perload we specify all the sub fileds that we will use
+		# and we fetch all the data we need with one big query
+		#
+		for host in self.newdb.getNodesfromNames(args, 
+				preload=['vm_defs', 'networks', 'vm_defs.disks']):
 
-			#
+			if not host.vm_defs :
+				continue
+
 			# get the physical node that houses this VM
-			#
-			(physnodeid, physhost) = vmlib.getPhysNode(host)
+			physhost = host.vm_defs.physNode.name
 
-			if not physhost or not physnodeid:
-				continue
+			# get networks
+			macs = [net.mac for net in host.networks]
+			if len(macs) > 0:
+				mac = macs[0]
+			else:
+				mac = None
 
-			#
-			# get the VM configuration parameters
-			#
-			rows = self.db.execute("""select vn.id, vn.mem,
-				n.cpus, vn.slice, vn.virt_type, vn.cdrom_path
-				from nodes n, vm_nodes vn
-				where vn.node = n.id and n.name = '%s'""" %
-				host)
+			# disks
+			disks = []
+			for disk in host.vm_defs.disks:
 
-			if rows < 1:
-				continue
+				file = os.path.join(disk.prefix,
+					disk.name)
 
-			for vmnodeid, mem, cpus, slice, virt_type, cdrom in self.db.fetchall():
-				if not vmnodeid:
-					continue
+				diskstr = '%s:%s,%s,%s' % \
+					(disk.vbd_Type, file,
+					disk.device, disk.mode)
+				disks.append((diskstr, disk.size))
 
-				rows = self.db.execute("""select net.mac from
-					networks net, nodes n, vm_nodes vn
-					where vn.node = n.id and
-					net.node = n.id and
-					n.name = '%s'""" % host)
+			if len(disks) > 0:
+				(disk, disksize) = disks[0]
+			else:
+				disk = ''
+				disksize = ''
 
-				if rows > 0:
-					macs = self.db.fetchall()
-					mac, = macs[0]
+
+			if host.vm_defs.virt_type:
+				virtType = host.vm_defs.virt_type
+			else:
+				virtType = "para"
+
+			# spit it out!
+			info = (host.vm_defs.slice, host.vm_defs.mem, host.cpus, mac, physhost, virtType)
+			if showstatus:
+				info += (vmlib.getStatus(host.name, physhost),)
+			if showdisks:
+				info += (disk, disksize, host.vm_defs.cdrom_path)
+
+			self.addOutput(host.name, info)
+
+			index = 1
+			while len(macs) > index or len(disks) > index:
+				if len(macs) > index:
+					mac = macs[index]
 				else:
-					macs = []
-					mac = None
+					mac = ''
 
-				disks = []
-				rows = self.db.execute("""select vbd_type,
-					prefix, name, device, mode, size from
-					vm_disks where vm_node = %s""" %
-					vmnodeid)
-				if rows > 0:
-					for vbd_type, prefix, name, device, \
-						mode, size in \
-						self.db.fetchall():
-
-						file = os.path.join(prefix,
-							name)
-
-						disk = '%s:%s,%s,%s' % \
-							(vbd_type, file,
-							device, mode)
-						disks.append((disk, size))
-
-				if len(disks) > 0:
-					(disk, disksize) = disks[0]
+				if len(disks) > index:
+					disk, disksize = disks[index]
 				else:
 					disk = ''
 					disksize = ''
 
-				if not virt_type or virt_type is None:
-					virtType = "para"
-				else:
-					virtType = virt_type
-
-				info = (slice, mem, cpus, mac, physhost, virtType)
+				info = (None, None, None, mac, None, None)
 				if showstatus:
-					info += (vmlib.getStatus(host, physhost),)
+					info += (None,)
 				if showdisks:
-					info += (disk, disksize, cdrom)
+					info += (disk, disksize, None)
 
-				self.addOutput(host, info)
+				self.addOutput(host.name, info)
 
-				index = 1
-				while len(macs) > index or len(disks) > index:
-					if len(macs) > index:
-						mac, = macs[index]
-					else:
-						mac = ''
-
-					if len(disks) > index:
-						disk, disksize = disks[index]
-					else:
-						disk = ''
-						disksize = ''
-
-					info = (None, None, None, mac, None)
-					if showstatus:
-						info += (None,)
-					if showdisks:
-						info += (None, disk, disksize)
-
-					self.addOutput(host, info)
-
-					index += 1
+				index += 1
 
 		header = [ 'vm-host', 'slice', 'mem', 'cpus', 'mac', 'host', 'virt-type' ]
 

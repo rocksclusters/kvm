@@ -58,6 +58,7 @@
 import os
 import rocks.commands
 import re
+import syslog
 
 import sys
 sys.path.append('/usr/lib64/python2.' + str(sys.version_info[1]) + '/site-packages')
@@ -383,56 +384,71 @@ class Command(rocks.commands.report.host.command):
 		return returnxml
 
 
+	def runXMLPlugin(self, plugins, name, node, xml):
+		"""if a plugin named name exist run it and return its xml if
+		it does not exist return unmodified xml"""
+                for plugin in plugins:
+                        if name in plugin.__module__:
+				syslog.syslog(syslog.LOG_INFO, 
+						'PLUGIN (report host vm config) %s'
+						% plugin.__module__)
+				return plugin.run(node, xml)
+		return xml
+
+
 	def getXMLconfig(self, node):
+		"""main function it buils the full libvirt xml for the given
+		node and it returns it"""
+
+		plugins = self.loadPlugins()
 
 		xmlconfig = []
 		xmlconfig.append("<domain type='kvm'>")
 		xmlconfig.append("  <name>%s</name>" % node.name)
 
-		xmlconfig = xmlconfig + self.reportBootLoader(node)
+		xmlconfig = xmlconfig + self.runXMLPlugin(plugins, 'plugin_bootloader',
+			node, self.reportBootLoader(node))
 
-
-		xmlconfig = xmlconfig + self.getCpuMem(node)
+		xmlconfig = xmlconfig + self.runXMLPlugin(plugins, 'plugin_cpumem',
+			node, self.getCpuMem(node))
 
 		#
 		# configure the devices
 		#
-		xmlconfig.append("  <devices>")
-		xmlconfig.append("    <emulator>/usr/libexec/qemu-kvm</emulator>")
+		devicexml = []
+		devicexml.append("  <devices>")
+		devicexml.append("    <emulator>/usr/libexec/qemu-kvm</emulator>")
 
-		#
 		# network config
-		#
-		xmlconfig = xmlconfig + self.getInterfaces(node)
+		devicexml = devicexml + self.runXMLPlugin(plugins, 'plugin_interface',
+			node, self.getInterfaces(node))
 
-
-		#
 		# add the disk config
-		#
-		xmlconfig = xmlconfig + self.getDisks(node)
+		devicexml = devicexml + self.runXMLPlugin(plugins, 'plugin_disk',
+			node, self.getDisks(node))
 
-
-		#
 		# additional devices set with attributes
-		#
 		i = 0
 		while True:
 			attribute = self.newdb.getHostAttr(node, 'kvm_device_%d' % i)
 			i = i + 1
 			if attribute :
-				xmlconfig.append(rocks.util.unescapeAttr(attribute))
+				devicexml.append(rocks.util.unescapeAttr(attribute))
 			else:
 				break
 
-		#
 		# the extra devices
-		#
-		xmlconfig.append("    <graphics type='vnc' port='-1'/>")
-		xmlconfig.append("    <console tty='/dev/pts/0'/>")
-		xmlconfig.append("  </devices>")
-		xmlconfig.append("</domain>")
-		return '\n'.join(xmlconfig)
+		devicexml.append("    <graphics type='vnc' port='-1'/>")
+		devicexml.append("    <console tty='/dev/pts/0'/>")
+		devicexml.append("  </devices>")
+		xmlconfig = xmlconfig + self.runXMLPlugin(plugins, 'plugin_device',
+                        node, devicexml)
 
+		xmlconfig.append("</domain>")
+
+		# the last one is the global plugin
+		xmlconfig =  self.runXMLPlugin(plugins, 'plugin_global', node, devicexml)
+		return '\n'.join(xmlconfig)
 
 
 	def run(self, params, args):

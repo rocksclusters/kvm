@@ -56,10 +56,7 @@
 #
 
 import os
-import stat
-import tempfile
 import rocks.commands
-import rocks.vmextended
 import re
 
 import sys
@@ -81,6 +78,90 @@ class Command(rocks.commands.report.host.command):
 	</example>
 
 	"""
+
+	def getDisks(self, node):
+		"""return the xml snippet regarding the disks section of the 
+		given node"""
+
+		returnxml = []
+		idedevices = []
+
+		for disk in node.vm_defs.disks:
+			#
+			# if the disk specification is a 'regular' file, then
+			# make sure the file for the disk space exists. if
+			# it doesn't, create a sparse file for the disk space.
+			#
+			file = os.path.join(disk.prefix, disk.name)
+
+			if disk.vbd_Type in [ 'file', 'qcow2', 'qed' ]:
+				a = "    <disk type='file' device='disk'>"
+				returnxml.append(a)
+
+				if disk.vbd_Type == 'file':
+					#default
+					a = "      <driver name='qemu' type='raw'/>"
+				elif disk.vbd_Type == 'qcow2':
+					a = "      <driver name='qemu' type='qcow2'/>"
+				elif disk.vbd_Type == 'qed':
+					a = "      <driver name='qemu' type='qed'/>"
+				returnxml.append(a)
+				#elif disk.vbd_Type == 'tap:aio':
+				#	a = "<driver name='tap' type='aio'/>"
+
+				a = "      <source file='%s'/>" % file
+				returnxml.append(a)
+
+			elif disk.vbd_Type == 'phy':
+				a = "    <disk type='block' device='disk'>"
+				returnxml.append(a)
+
+				a = "      <source dev='%s'/>" % file
+				returnxml.append(a)
+			else:
+				self.abort("Disk type is not valid. Please see rocks add host vm help.")
+
+			# we misuse the mode column to carry the driver name 
+			# that needs to should be used to expese the disk 
+			if disk.mode == 'w':
+				# default driver
+				# legacy for backward compatibility
+				bus = 'virtio'
+			else:
+				bus = disk.mode
+
+			a = "      <target dev='%s' bus='%s'/>" % (disk.device, bus)
+			if disk.device == 'ide':
+				idedevices.append(disk.device)
+			returnxml.append(a)
+
+			a = "    </disk>"
+			returnxml.append(a)
+
+		#
+		# check for a CDROM
+		#
+		cdrom_path = node.vm_defs.cdrom_path
+		if cdrom_path:
+			returnxml.append("<disk type='file' device='cdrom'>")
+			returnxml.append("  <driver name='qemu' type='raw'/>")
+			if cdrom_path.startswith('/dev'):
+				# block device
+				returnxml.append("  <source dev='%s'/>" % cdrom_path)
+			else:
+				# we assume it is a ISO file
+				returnxml.append("  <source file='%s'/>" % cdrom_path)
+			# find the ide device
+			for i in ['a', 'b', 'c', 'd']:
+				device = 'hd' + i
+				if device not in idedevices:
+					break
+			returnxml.append("  <target dev='%s' bus='ide'/>"% device)
+			returnxml.append("  <readonly/>")
+			returnxml.append("</disk>")
+
+		return returnxml
+
 
 	def getBridgeDevName(self, host, subnetid, vlanid):
 		returnDeviceName = None
@@ -123,63 +204,152 @@ class Command(rocks.commands.report.host.command):
 		return returnDeviceName
 
 
-	def reportBootLoader(self, host, xmlconfig, virtType, cdrom):
+	def getInterfaces(self, node):
+		"""return the xml snippet relative to the interfaces"""
+
+		returnxml = []
+		
+		physhost = node.vm_defs.physNode.name
+		for network in node.networks:
+
+			if not network.mac or not network.subnet_ID:
+				# is mac is None or if subnet_ID is None this 
+				# interface cannot be configured se let's skip it
+				continue
+
+
+			# we need to understand if it is a directly attached 
+			# interface (macvtap) or a bridged interface 
+			#
+			# if it is directly attached there should be an interface 
+			# named vlan<vlanid> if it's bridged there should be an 
+			# interface on the vlanid with an IP address or not vlanID
+			# 
+			bridged = False
+			if not network.vlanID :
+				bridged = True
+			else:
+				rows = self.db.execute("""select net.device, net.ip
+					from networks net, nodes n
+					where net.node = n.id and
+					n.name = '%s' and net.vlanid = %d""" % 
+					(physhost, network.vlanID))
+	
+				if rows  > 1 :
+					self.abort("There are too many interfaces defined on %s with vlan %d" %
+						(physhost, network.vlanID))
+	
+				if rows == 0 :
+					self.abort("There no interface defined on %s with vlan %d" %
+						(physhost, network.vlanID))
+	
+				physDevName, physDevIP = self.db.fetchone()
+
+				if physDevIP == None and 'vlan' in physDevName :
+					bridged = False
+				else:
+					bridged = True
+			if not bridged:
+				returnxml.append("    <interface type='direct'>")
+				dev = self.getBridgeDevName(physhost, network.subnet_ID, network.vlanID)
+				returnxml.append("      <source dev='p%s' mode='bridge'/>" % dev )
+				returnxml.append("      <mac address='%s'/>" % network.mac)
+				returnxml.append("      <model type='virtio' />")
+				returnxml.append("    </interface>")
+			else:
+				returnxml.append("    <interface type='bridge'>")
+				dev = self.getBridgeDevName(physhost, network.subnet_ID, network.vlanID)
+				returnxml.append("      <source bridge='%s'/>" % dev )
+				returnxml.append("      <mac address='%s'/>" % network.mac)
+				returnxml.append("      <model type='virtio' />")
+				returnxml.append("    </interface>")
+
+		return returnxml
+
+
+	def getCpuMem(self, node):
+		"""return the xml snippet relative to the cpu and memory 
+		In particular the memory, vcpu, cpu, cputune, and feature tags.
+		"""
+
+		xmlconfig = []
+		xmlconfig.append("  <memory>%s</memory>" % node.vm_defs.mem)
+		xmlconfig.append("  <vcpu>%s</vcpu>" % node.cpus)
+
+                # cpu_mode you can specify the capabilities of the virtual cpu
+                # host-passthrough should be the default for speed
+                cpu_mode = self.newdb.getHostAttr(node, 'cpu_mode')
+                cpu_match = self.newdb.getHostAttr(node, 'cpu_match')
+                if cpu_mode :
+                        xmlconfig.append("  <cpu mode='" +
+				rocks.util.unescapeAttr(cpu_mode) + "'/>")
+                elif cpu_match :
+			cpu_match = rocks.util.unescapeAttr(cpu_match)
+                        cpu_match_split = cpu_match.split(':', 1)
+                        xmlconfig.append("  <cpu mode='" + cpu_match_split[0] + "'>")
+                        if len(cpu_match_split) > 1 :
+                                xmlconfig.append( cpu_match_split[1] )
+                        xmlconfig.append("  </cpu>")
+
+		# for cpu pinning
+		attribute = self.newdb.getHostAttr(node, 'kvm_cpu_pinning')
+		if attribute == "pin_all":
+			xmlconfig.append("  <cputune>")
+			for i in range(cpus):
+			        xmlconfig.append("    <vcpupin vcpu=\"%d\" cpuset=\"%d\"/>" % (i, i))
+			xmlconfig.append("  </cputune>")
+		elif attribute:
+			xmlconfig.append(rocks.util.unescapeAttr(attribute))
+
+		if node.vm_defs.virt_type == 'hvm':
+			features = self.newdb.getHostAttr(node,'HVM_Features')
+			if features is None :
+				features = """    <acpi/>\n    <apic/>\n    <pae/>"""
+			xmlconfig.append("  <features>")
+			xmlconfig.append(rocks.util.unescapeAttr(features))
+			xmlconfig.append("  </features>")
+		return xmlconfig
+
+
+	def reportBootLoader(self, node):
 		"""first section of the libvirt xml with the startup params"""
 
-		xmlconfig.append("<domain type='kvm'>")
-		xmlconfig.append("<name>%s</name>" % host)
-		xmlconfig.append("<os>")
-		xmlconfig.append("  <type>hvm</type>")
+		returnxml = []
+		returnxml.append("  <os>")
+		returnxml.append("    <type>hvm</type>")
 
-		#print "host is ", host
                 #let's check out the boot action
-		nrows = self.db.execute("""select b.action from boot b , nodes n where
-			b.node = n.id and n.name = "%s" """ % (host))
-		if nrows < 1:
+		if not node.boot:
 			#that's bad!
-			self.abort('Host ' + host + ' doesn\'t have a boot action...')
-		else:
-			action, = self.db.fetchone()
+			self.abort('Host ' + node.name + ' doesn\'t have a boot action...')
 
-
-		#let's see how we boot this VM
-		runAction = None
-		installAction = None
-		rows = self.db.execute("""select runaction, installaction
-			from nodes where name = '%s' """ % host)
-		if rows > 0:
-			(runAction, installAction) = self.db.fetchone()
-		if installAction == "install vm frontend" and action == 'install':
+		if node.installaction == "install vm frontend" and node.boot.action == 'install':
 			#action == 'install' and installAction == install vm fronend
 			#aka we are installing a frontend
 			#1. anaconda kernel and ramdisk
 			#2. network info to fetch stage2 from http server
 			# Read the profile
-			kernel, ramdisk, bootargs = ('', '', '')
-			rows = self.db.execute("""select kernel, ramdisk, args
-					from bootaction where action = '%s' """ % installAction)
-			if rows > 0:
-				kernel, ramdisk, bootargs = self.db.fetchone()
+			
 
+			session = self.newdb.getSession()
+			bootaction = rocks.db.mappings.base.Bootaction.loadOne(
+					session, action = node.installaction)
+			bootargs = bootaction.args
 			ip = None
 			netmask = None
 			dns = None
 			gateway = None
-			if host in self.getHostnames( [ 'frontend' ]):
+			if node.name in self.getHostnames( [ 'frontend' ]):
 				subnet = 'public'
-				rows = self.db.execute("""select net.ip, s.netmask from
-				        networks net,
-				        nodes n, subnets s where n.name='%s' and
-				        n.id = net.node and net.subnet = s.id and
-				        s.name = '%s' """ % (host, subnet))
+				for network in node.networks:
+					if network.subnet.name == 'public':
+						ip = network.ip
+						netmask = network.subnet.netmask
 				
-				if rows > 0:
-					(ip, netmask) = self.db.fetchone()
-				
-				dns = self.db.getHostAttr(host,
+				dns = self.newdb.getHostAttr(node,
 					'Kickstart_PublicDNSServers')
 				
-				for (key, val) in self.db.getHostRoutes(host).items():
+				for (key, val) in self.db.getHostRoutes(node.name).items():
 					if key == '0.0.0.0' and val[0] == '0.0.0.0':
 						gateway = val[1]
 			
@@ -197,289 +367,91 @@ class Command(rocks.commands.report.host.command):
 			if gateway:
 			        bootargs += ' gateway=%s ' % gateway
 			
-			xmlconfig.append("  <kernel>%s</kernel>" % kernel )
-			xmlconfig.append("  <initrd>%s</initrd>" % ramdisk )
-			xmlconfig.append("  <cmdline>%s</cmdline>" % bootargs )
-			xmlconfig.append("</os>")
-			xmlconfig.append("<on_reboot>destroy</on_reboot>")
+			returnxml.append("    <kernel>%s</kernel>" % bootaction.kernel )
+			returnxml.append("    <initrd>%s</initrd>" % bootaction.ramdisk )
+			returnxml.append("    <cmdline>%s</cmdline>" % bootargs )
+			returnxml.append("  </os>")
+			returnxml.append("  <on_reboot>destroy</on_reboot>")
 		else:
 			#we boot the machine as if normal hardware
-			if cdrom :
-				xmlconfig.append("  <boot dev='cdrom'/>")
-			xmlconfig.append("  <boot dev='network'/>")
-			xmlconfig.append("  <boot dev='hd'/>")
-			xmlconfig.append("  <bootmenu enable='yes'/>")
-			xmlconfig.append("</os>")
+			if node.vm_defs.cdrom_path :
+				returnxml.append("    <boot dev='cdrom'/>")
+			returnxml.append("    <boot dev='network'/>")
+			returnxml.append("    <boot dev='hd'/>")
+			returnxml.append("    <bootmenu enable='yes'/>")
+			returnxml.append("  </os>")
+		return returnxml
 
 
-	def getXMLconfig(self, physhost, host):
+	def getXMLconfig(self, node):
 
 		xmlconfig = []
-		cdrom_path = self.vm.getCDROM(host)
-		virtType = self.command('report.host.vm.virt_type', [ host,]).strip()
-		self.reportBootLoader(host,xmlconfig,virtType, cdrom_path)
+		xmlconfig.append("<domain type='kvm'>")
+		xmlconfig.append("  <name>%s</name>" % node.name)
 
-		#
-		# get the VM parameters
-		#
-		vmnodeid = None
-		mem = None
-		cpus = None
-		macs = None
-		disks = None
+		xmlconfig = xmlconfig + self.reportBootLoader(node)
 
-		rows = self.db.execute("""select vn.id, vn.mem, n.cpus
-			from nodes n, vm_nodes vn where vn.node = n.id and
-			n.name = '%s'""" % host)
 
-		vmnodeid, mem, cpus = self.db.fetchone()
-		if not vmnodeid or not mem or not cpus:
-			return
-
-		try:
-			memory = int(mem) * 1024
-		except:
-			return
-
-		xmlconfig.append("<memory>%s</memory>" % memory)	
-		xmlconfig.append("<vcpu>%s</vcpu>" % cpus)	
-
-                # cpu_mode you can specify the capabilities of the virtual cpu
-                # host-passthrough should be the default for speed
-                cpu_mode = self.db.getHostAttr(host, 'cpu_mode')
-                cpu_match = self.db.getHostAttr(host, 'cpu_match')
-                if cpu_mode :
-                        xmlconfig.append("<cpu mode='" + 
-				self.unescapeAttr(cpu_mode) + "'/>")
-                elif cpu_match :
-			cpu_match = self.unescapeAttr(cpu_match)
-                        cpu_match_split = cpu_match.split(':', 1)
-                        xmlconfig.append("<cpu mode='" + cpu_match_split[0] + "'>")
-                        if len(cpu_match_split) > 1 :
-                                xmlconfig.append( cpu_match_split[1] )
-                        xmlconfig.append("</cpu>")
-
-		# for cpu pinning
-		attribute = self.db.getHostAttr(host, 'kvm_cpu_pinning')
-		if attribute == "pin_all":
-			xmlconfig.append("<cputune>")
-			for i in range(cpus):
-			        xmlconfig.append("  <vcpupin vcpu=\"%d\" cpuset=\"%d\"/>" % (i, i))
-			xmlconfig.append("</cputune>")
-		elif attribute:
-			xmlconfig.append(self.unescapeAttr(attribute))
-
-		if virtType == 'hvm':
-			features = self.db.getHostAttr(host,'HVM_Features')
-			if features is None :
-				features = """\t<acpi/>\n\t<apic/>\n\t<pae/>"""
-			xmlconfig.append("<features>")
-			xmlconfig.append(self.unescapeAttr(features))
-			xmlconfig.append("</features>")
+		xmlconfig = xmlconfig + self.getCpuMem(node)
 
 		#
 		# configure the devices
 		#
-		xmlconfig.append("<devices>")
-		xmlconfig.append("  <emulator>/usr/libexec/qemu-kvm</emulator>")
+		xmlconfig.append("  <devices>")
+		xmlconfig.append("    <emulator>/usr/libexec/qemu-kvm</emulator>")
 
 		#
 		# network config
 		#
-		rows = self.db.execute("""select net.mac, net.subnet, net.vlanid
-			from networks net, nodes n, vm_nodes vn
-			where vn.node = n.id and net.node = n.id and
-			n.name = '%s' order by net.id""" % host)
+		xmlconfig = xmlconfig + self.getInterfaces(node)
 
-		macs = self.db.fetchall()
-		if not macs:
-			return
-
-		vifs = []
-		index = 0
-		for mac, subnetid, vlanid in macs:
-			# allow VMs to have virtual and VLAN interfaces
-			if mac is not None:
-				# we need to understand if it is a directly attached interface 
-				# (macvtap) or a bridged interface 
-				#
-				# if it is directly attached there should be an interface 
-				# named vlan<vlanid> if it's bridged there should be an 
-				# interface on the vlanid with an IP address or not vlanID
-				# 
-				bridged = False
-				if not vlanid :
-					bridged = True
-				else:
-					rows = self.db.execute("""select net.device, net.ip
-						from networks net, nodes n
-						where net.node = n.id and
-						n.name = '%s' and net.vlanid = %d""" % 
-						(physhost, vlanid))
-	
-					if rows  > 1 :
-						self.abort("There are too many interfaces defined on %s with vlan %d" %
-							(physhost, vlanid))
-	
-					if rows == 0 :
-						self.abort("There no interface defined on %s with vlan %d" %
-							(physhost, vlanid))
-	
-					physDevName, physDevIP = self.db.fetchone()
-
-					if physDevIP == None and 'vlan' in physDevName :
-						bridged = False
-					else:
-						bridged = True
-
-				if not bridged:
-					xmlconfig.append("  <interface type='direct'>")
-					dev = self.getBridgeDevName(physhost, subnetid, vlanid)
-					xmlconfig.append("    <source dev='p%s' mode='bridge'/>" % dev )
-					xmlconfig.append("    <mac address='%s'/>" % mac)
-					xmlconfig.append("    <model type='virtio' />")
-					xmlconfig.append("  </interface>")
-				else:
-					xmlconfig.append("  <interface type='bridge'>")
-					#xmlconfig.append("  <interface type='direct'>")
-					dev = self.getBridgeDevName(physhost, subnetid, vlanid)
-					xmlconfig.append("    <source bridge='%s'/>" % dev )
-					#xmlconfig.append("    <source dev='%s' mode='bridge'/>" % dev )
-					xmlconfig.append("    <mac address='%s'/>" % mac)
-					xmlconfig.append("    <model type='virtio' />")
-					xmlconfig.append("  </interface>")
-				index += 1
 
 		#
-		# disk config
+		# add the disk config
 		#
-		rows = self.db.execute("""select vbd_type, prefix, name,
-			device, mode, size from vm_disks where vm_node = %s
-			order by id""" % vmnodeid)
-		disks = self.db.fetchall()
-		if not disks:
-			return
+		xmlconfig = xmlconfig + self.getDisks(node)
 
-		vmdisks = []
-		index = 0
-		bootdisk = None
-		bootdevice = None
-		idedevices = []
-		for vbd_type,prefix,name,device,mode,size in disks:
-			#
-			# if the disk specification is a 'regular' file, then
-			# make sure the file for the disk space exists. if
-			# it doesn't, create a sparse file for the disk space.
-			#
-			file = os.path.join(prefix, name)
-
-			if vbd_type in [ 'file', 'qcow2', 'qed' ]:
-				a = "<disk type='file' device='disk'>"
-				xmlconfig.append(a)
-
-				if vbd_type == 'file':
-					#default
-					a = "<driver name='qemu' type='raw'/>"
-				elif vbd_type == 'qcow2':
-					a = "<driver name='qemu' type='qcow2'/>"
-				elif vbd_type == 'qed':
-					a = "<driver name='qemu' type='qed'/>"
-				xmlconfig.append(a)
-				#elif vbd_type == 'tap:aio':
-				#	a = "<driver name='tap' type='aio'/>"
-
-				a = "<source file='%s'/>" % file
-				xmlconfig.append(a)
-
-			elif vbd_type == 'phy':
-				a = "<disk type='block' device='disk'>"
-				xmlconfig.append(a)
-
-				a = "<source dev='%s'/>" % file
-				xmlconfig.append(a)
-			else:
-				self.abort("Disk type is not valid. Please see rocks add host vm help.")
-
-			# we misuse the mode column to carry the driver name 
-			# that needs to should be used to expese the disk 
-			if mode == 'w':
-				# default driver
-				# legacy for backward compatibility
-				bus = 'virtio'
-			else:
-				bus = mode
-
-			a = "<target dev='%s' bus='%s'/>" % (device, bus)
-			if device == 'ide':
-				idedevices.append(device)
-			xmlconfig.append(a)
-
-			a = "</disk>"
-			xmlconfig.append(a)
-
-		#
-		# check for a CDROM
-		#
-		if cdrom_path:
-			xmlconfig.append("<disk type='file' device='cdrom'>")
-			xmlconfig.append("  <driver name='qemu' type='raw'/>")
-			if stat.S_ISBLK(os.stat(cdrom_path).st_mode):
-				# block device
-				xmlconfig.append("  <source dev='%s'/>" % cdrom_path)
-			elif stat.S_ISREG(os.stat(cdrom_path).st_mode):
-				xmlconfig.append("  <source file='%s'/>" % cdrom_path)
-			else:
-				self.abort("cdrom does not point to a valid path. "
-					"Change it with rocks set host vm cdrom")
-			# find the ide device
-			for i in ['a', 'b', 'c', 'd']:
-				device = 'hd' + i
-				if device not in idedevices:
-					break
-			xmlconfig.append("  <target dev='%s' bus='ide'/>"% device)
-			xmlconfig.append("  <readonly/>")
-			xmlconfig.append("</disk>")
 
 		#
 		# additional devices set with attributes
 		#
 		i = 0
 		while True:
-			attribute = self.db.getHostAttr(host, 'kvm_device_%d' % i)
+			attribute = self.newdb.getHostAttr(node, 'kvm_device_%d' % i)
 			i = i + 1
 			if attribute :
-				xmlconfig.append(self.unescapeAttr(attribute))
+				xmlconfig.append(rocks.util.unescapeAttr(attribute))
 			else:
 				break
 
 		#
 		# the extra devices
 		#
-		xmlconfig.append("<graphics type='vnc' port='-1'/>")
-		xmlconfig.append("<console tty='/dev/pts/0'/>")
-		xmlconfig.append("</devices>")
+		xmlconfig.append("    <graphics type='vnc' port='-1'/>")
+		xmlconfig.append("    <console tty='/dev/pts/0'/>")
+		xmlconfig.append("  </devices>")
 		xmlconfig.append("</domain>")
 		return '\n'.join(xmlconfig)
 
 
 
 	def run(self, params, args):
-		hosts = self.getHostnames(args)
 
-		if len(hosts) < 1:
+
+		if len(args) < 1:
 			self.abort('must supply at least one host')
 
 		self.beginOutput()
-		for host in hosts:
+		for node in self.newdb.getNodesfromNames(args, preload = 
+				['vm_defs', 'vm_defs.disks', 'networks', 
+				'networks.subnet', 'boot']):
 			#
 			# get the VM configuration (in XML format for libvirt)
 			#
-			self.vm = rocks.vmextended.VMextended(self.db)
-			(physnodeid, physhost) = self.vm.getPhysNode(host)
-			if not physhost:
+			if not node.vm_defs:
 				continue
-			xmlconfig = self.getXMLconfig(physhost, host)
-			self.addOutput(host, '%s' % xmlconfig)
+			xmlconfig = self.getXMLconfig(node)
+			self.addOutput(node.name, '%s' % xmlconfig)
 		self.endOutput(padChar='')
 
 

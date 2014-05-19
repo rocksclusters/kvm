@@ -213,9 +213,12 @@ class Command(rocks.commands.report.host.command):
 		physhost = node.vm_defs.physNode.name
 		for network in node.networks:
 
-			if not network.mac or not network.subnet_ID:
+			if not network.mac or not network.subnet_ID or \
+					network.disable_kvm:
 				# is mac is None or if subnet_ID is None this 
-				# interface cannot be configured se let's skip it
+				# interface cannot be configured se let's skip 
+				# it, if disable_kvm the users has explicitely 
+				# disabled it
 				continue
 
 

@@ -447,7 +447,7 @@ class Command(rocks.commands.report.host.command):
 		xmlconfig.append("</domain>")
 
 		# the last one is the global plugin
-		xmlconfig =  self.runXMLPlugin(plugins, 'plugin_global', node, devicexml)
+		xmlconfig =  self.runXMLPlugin(plugins, 'plugin_global', node, xmlconfig)
 		return '\n'.join(xmlconfig)
 
 

@@ -25,7 +25,7 @@ All rights reserved. Rocks(tm) v4.3 www.rocksclusters.org
 DROP TABLE IF EXISTS vm_nodes;
 CREATE TABLE vm_nodes (
 	ID		int(11) NOT NULL auto_increment,
-	PhysNode	int(11) NOT NULL default '0',
+	PhysNode	int(11) default '0',
 	Node		int(11) NOT NULL default '0',
 	Mem		int(11) NOT NULL default '1024',
 	Slice		int(11) NOT NULL default '0',

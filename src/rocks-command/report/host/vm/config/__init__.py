@@ -277,7 +277,8 @@ class Command(rocks.commands.report.host.command):
 		"""
 
 		xmlconfig = []
-		xmlconfig.append("  <memory>%s</memory>" % node.vm_defs.mem)
+
+		xmlconfig.append("  <memory>%s</memory>" % (node.vm_defs.mem * 1024))
 		xmlconfig.append("  <vcpu>%s</vcpu>" % node.cpus)
 
                 # cpu_mode you can specify the capabilities of the virtual cpu

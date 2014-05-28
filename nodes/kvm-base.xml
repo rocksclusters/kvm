@@ -50,7 +50,7 @@ All rights reserved. Rocks(tm) v4.3 www.rocksclusters.org
 <post>
 <!-- increase the max number of virtual interfaces that can be created -->
 
-<file name="/etc/modprobe.d/netloop.conf">
+<file rcs='false' name="/etc/modprobe.d/netloop.conf">
 options netloop nloopbacks=32
 </file>
 

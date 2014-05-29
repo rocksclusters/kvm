@@ -518,42 +518,10 @@ class Command(rocks.commands.HostArgumentProcessor, rocks.commands.add.command):
 
 
 	def getNextIP(self, name):
-		rows = self.db.execute("""select subnet, netmask from subnets
-			where name = '%s'""" % (name))
 
-		if rows != 1:
-			return None
-
-		subnet, netmask = self.db.fetchone()
-
-		ipinfo = IPy.IP('%s/%s' % (subnet, netmask))
-
-		bcast = ipinfo.broadcast()
-		net = ipinfo.net()
-
-		firstip = '%s' % IPy.IP(net.int() + 1)
-
-		rows = self.db.execute("""select ip from networks""")
-
-		knownips = []
-		if rows > 0:
-			knownips = self.db.fetchall()
-
-		index = 1
-		ip = None
-		while 1:
-			lastip = '%s' % IPy.IP(bcast.int() - index)
-
-			if lastip == firstip:
-				break
-
-			if (lastip,) not in knownips:
-				ip = lastip
-				break
-
-			index += 1
-
-		return ip
+		nextip = self.command('report.nextip', [name])
+		if nextip and len(nextip) > 0:
+			return nextip.strip()
 
 
 	def makeOctets(self, str):

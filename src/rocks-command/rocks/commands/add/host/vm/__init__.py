@@ -841,3 +841,5 @@ class Command(rocks.commands.HostArgumentProcessor, rocks.commands.add.command):
 			self.command('sync.config')
 
 
+
+RollName = "kvm"

@@ -170,3 +170,5 @@ class Command(command):
 				time.sleep(delay)
 
 
+
+RollName = "kvm"

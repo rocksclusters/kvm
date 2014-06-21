@@ -172,3 +172,5 @@ class Command(rocks.commands.restore.host.command):
 				hipervisor.restore(file)
 
 
+
+RollName = "kvm"

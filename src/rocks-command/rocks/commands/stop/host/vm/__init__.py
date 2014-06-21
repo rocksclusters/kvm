@@ -189,3 +189,5 @@ class Command(rocks.commands.stop.host.command):
 				plugin.run(host)
 
 
+
+RollName = "kvm"

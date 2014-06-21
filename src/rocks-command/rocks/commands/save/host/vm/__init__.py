@@ -169,3 +169,5 @@ class Command(rocks.commands.save.host.command):
 				domU.save(file)
 
 
+
+RollName = "kvm"

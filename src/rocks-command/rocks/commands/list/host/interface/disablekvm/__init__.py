@@ -106,3 +106,5 @@ class Command(rocks.commands.list.host.command):
 		self.endOutput(header)
 
 
+
+RollName = "kvm"

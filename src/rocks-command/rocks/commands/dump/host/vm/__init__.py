@@ -209,3 +209,5 @@ class Command(rocks.commands.dump.host.command):
 			self.dumpVM(host)
 
 
+
+RollName = "kvm"

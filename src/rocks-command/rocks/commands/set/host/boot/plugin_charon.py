@@ -95,3 +95,5 @@ def notify_charon():
 
 
 
+
+RollName = "kvm"

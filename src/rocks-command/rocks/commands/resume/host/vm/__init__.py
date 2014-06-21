@@ -153,3 +153,5 @@ class Command(rocks.commands.resume.host.command):
 			domU.resume()
 
 
+
+RollName = "kvm"

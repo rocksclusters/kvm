@@ -123,3 +123,5 @@ class Command(rocks.commands.create.host.command):
 		self.command('start.host.vm', args)
 
 
+
+RollName = "kvm"

@@ -564,3 +564,5 @@ class Command(rocks.commands.add.command):
 		print "<-- Done."
 
 
+
+RollName = "kvm"

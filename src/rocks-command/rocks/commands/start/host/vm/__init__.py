@@ -357,3 +357,5 @@ class Command(rocks.commands.start.host.command):
 		if sync_vlan:
 			self.command('sync.host.vlan', list(sync_vlan))
 
+
+RollName = "kvm"

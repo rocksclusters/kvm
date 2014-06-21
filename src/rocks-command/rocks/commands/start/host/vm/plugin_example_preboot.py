@@ -71,3 +71,5 @@ class Plugin(rocks.commands.Plugin):
 		return
 
 
+
+RollName = "kvm"

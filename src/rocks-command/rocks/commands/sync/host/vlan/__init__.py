@@ -123,3 +123,5 @@ class Command(rocks.commands.sync.host.command):
 				for thread in threads:
 					thread.join(timeout)
 
+
+RollName = "kvm"

@@ -333,3 +333,5 @@ class Command(rocks.commands.move.host.command):
 		self.command('restore.host.vm', [ host, "file=%s" % tosavefile])
 
 
+
+RollName = "kvm"

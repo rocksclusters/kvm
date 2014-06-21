@@ -228,3 +228,5 @@ class Command(rocks.commands.HostArgumentProcessor,
 		self.endOutput(header, trimOwner = 0)
 
 
+
+RollName = "kvm"

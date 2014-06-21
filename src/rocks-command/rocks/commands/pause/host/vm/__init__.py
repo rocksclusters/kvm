@@ -139,3 +139,5 @@ class Command(rocks.commands.pause.host.command):
 			domU = hipervisor.lookupByName(host)
 			domU.suspend()
 
+
+RollName = "kvm"

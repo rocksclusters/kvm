@@ -342,3 +342,5 @@ class Command(rocks.commands.HostArgumentProcessor, rocks.commands.set.command):
 			else:
 				self.abort("virt-type must be either 'hvm' or 'para'")	
 
+
+RollName = "kvm"

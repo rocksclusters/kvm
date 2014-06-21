@@ -194,3 +194,5 @@ class Command(rocks.commands.HostArgumentProcessor,
 
 
 
+
+RollName = "kvm"

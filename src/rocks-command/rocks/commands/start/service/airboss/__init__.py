@@ -827,3 +827,5 @@ class Command(rocks.commands.start.service.command):
 			else:
 				conn.close()
 
+
+RollName = "kvm"

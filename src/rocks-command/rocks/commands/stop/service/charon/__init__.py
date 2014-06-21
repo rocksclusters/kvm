@@ -109,3 +109,5 @@ class Command(rocks.commands.stop.service.command):
 					break
 
 
+
+RollName = "kvm"

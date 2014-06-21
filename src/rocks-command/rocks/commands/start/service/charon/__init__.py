@@ -363,3 +363,5 @@ def signalUsr1Handler(signum, frame):
 	"""signal handler for sigusr1 which will trigger a self.load_vmcontainers"""
 	global reload_vmcontainers
 	reload_vmcontainers = True
+
+RollName = "kvm"

@@ -212,3 +212,5 @@ class Command(rocks.commands.remove.host.command):
 				vm_node = %s""" % (vmnodeid))
 
 
+
+RollName = "kvm"

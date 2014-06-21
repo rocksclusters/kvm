@@ -476,3 +476,5 @@ class Command(rocks.commands.report.host.command):
 
 
 
+
+RollName = "kvm"

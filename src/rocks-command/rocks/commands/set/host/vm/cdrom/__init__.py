@@ -119,3 +119,5 @@ class Command(rocks.commands.HostArgumentProcessor, rocks.commands.set.command):
 
 		#TODO add code to attach cdrom to running instances
 
+
+RollName = "kvm"

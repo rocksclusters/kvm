@@ -1,6 +1,4 @@
 #
-# $Id: Makefile,v 1.6 2012/11/27 00:49:07 phil Exp $
-#
 # @Copyright@
 # 
 # 				Rocks(r)
@@ -55,27 +53,60 @@
 # 
 # @Copyright@
 #
-#
 
-PKGROOT         = /opt/rocks
-REDHAT.ROOT     = $(CURDIR)/../../
-# ROCKSROOT       = ../../../../..
+PKGROOT		= /opt/rocks
 -include $(ROCKSROOT)/etc/Rules.mk
 include Rules.mk
 
-build:
+# we need this to disable the stupid 
+# /usr/lib/rpm/brp-python-bytecompile
+# which just does a big mess in compiling all the python files
+MAKE.rpmflag	= -bb --define "__spec_install_post :"
 
-install::
-	mkdir -p $(ROOT)/$(PY.ROCKS)/rocks/commands/
-	mkdir -p $(ROOT)/$(PKGROOT)/bin
-	find ./*/ -name "*.py" | \
-		cpio -pduv $(ROOT)/$(PY.ROCKS)/rocks/commands/
-	install -m444 vmconstant.py $(ROOT)/$(PY.ROCKS)/rocks/
-	install -m444 vmextended.py $(ROOT)/$(PY.ROCKS)/rocks/
-	install -m755 rocks-create-vm-disks $(ROOT)/$(PKGROOT)/bin
-	for i in `find $(ROOT)/$(PY.ROCKS)/rocks/commands -name "*.py"`; do\
-		grep "^RollName = " $$i > /dev/null ||                              \
+# If MICRO_VERSION isn't defined, then force it to zero
+ifndef VERSION.MICRO
+	VERSION.MICRO = 0
+endif 
+
+# we need this variable inside setup.py to set the 
+# version of the python egg
+myenv = ROCKS_VERSION=$(ROCKS_VERSION) 
+
+#DISTRIBUTE_DISABLE_VERSIONED_EASY_INSTALL_SCRIPT=1;
+
+# if ROOT is not defined assign / so that 
+# python setup.py install --root=$(ROOT)
+# has always something after the = if not distutils 
+# will bail on you
+ROOT ?= /
+
+build:: rocks-copyright.txt
+	
+install:: build
+	find rocks | sed -e 's/\//./g' -e '/\.py/d' > packages
+	$(PY.PATH) setup.py install --root=$(ROOT)
+
+
+clean::
+	rm -rf build
+	rm -rf dist
+	rm -rf rocks_command_kvm.egg-info
+	rm -rf packages
+
+
+ctags:
+	ctags  --python-kinds=-i --exclude=*/build/* -R .
+
+# add the RollName = "base" variable to all the command files we can 
+# commit this into the repo since this property never changes
+#
+# this script is a helper for adding the variable to all the file in 
+# this package
+addrollvariable:
+	for i in `find rocks/commands -name "*.py"`; do\
+		grep "^RollName = " $$i > /dev/null ||                  \
 		echo -e "\nRollName = \"$(ROLL)\"" >> $$i;              \
 	done
-	find $(ROOT) -type d -exec chmod a+rx {} \;
+ 
+
 

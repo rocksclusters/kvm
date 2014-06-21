@@ -63,10 +63,11 @@ import rocks.commands
 class Plugin(rocks.commands.Plugin):
 
 	def provides(self):
-		return 'allocate'
+		return 'plugin_allocate'
 
-	def run(self, host):
+	def run(self, node):
 		# here you can relocate your VM in rocks DB
+		# node is of type rocks.db.mappings.base.Node
 		return 
 
 

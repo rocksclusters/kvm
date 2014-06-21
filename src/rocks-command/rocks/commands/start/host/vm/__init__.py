@@ -275,15 +275,16 @@ class Command(rocks.commands.start.host.command):
 
 
 	def run(self, params, args):
-		hosts = self.getHostnames(args)
+		nodes = self.newdb.getNodesfromNames(args,
+				preload=['vm_defs', 'networks', 'vm_defs.disks']).all()
 		
-		if len(hosts) < 1:
+		if len(nodes) < 1:
 			self.abort('must supply at least one host')
 
 		sync_vlan = set()
 		plugins = self.loadPlugins()
 
-		for host in hosts:
+		for node in nodes:
 			#
 			# I need to run only one particular plugin here i can't just
 			# just call the plugins.runPlugins()
@@ -291,18 +292,22 @@ class Command(rocks.commands.start.host.command):
 			for plugin in plugins:
 				if 'plugin_allocate' in plugin.__module__:
 					syslog.syslog(syslog.LOG_INFO, 'run %s' % plugin)
-					plugin.run(host)
+					plugin.run(node)
 
 			#
 			# the name of the physical host that will boot
 			# this VM host
 			#
-			vm = rocks.vmextended.VMextended(self.db)
-			(physnodeid, physhost) = vm.getPhysNode(host)
-			if not physhost or not physnodeid:
-				continue
+			if not node.vm_defs:
+				self.abort("host %s is not a virtual host" % node.name)
 
-			if self.db.getHostAttr(host, 'kvm_autostart') == 'true':
+			if not node.vm_defs.physNode:
+				self.abort("host %s does not have a physical host" % node.name)
+
+			# get the physical node that houses this VM
+			physhost = node.vm_defs.physNode.name
+
+			if self.newdb.getHostAttr(node, 'kvm_autostart') == 'true':
 				autostart = True
 				sync_vlan.add(physhost)
 			else:
@@ -312,7 +317,7 @@ class Command(rocks.commands.start.host.command):
 			#
 			hipervisor = libvirt.open( rocks.vmconstant.connectionURL % physhost)
 			libvirt.registerErrorHandler(handler, 'context')
-			self.command('sync.host.vlan', [host])
+			self.command('sync.host.vlan', [node.name])
 
 			#
 			# get the VM configuration (in XML format for libvirt)
@@ -321,12 +326,12 @@ class Command(rocks.commands.start.host.command):
 			for plugin in plugins:
 				if 'plugin_preboot' in plugin.__module__:
 					syslog.syslog(syslog.LOG_INFO, 'run %s' % plugin)
-					xmlconfig = plugin.run(host)
+					xmlconfig = plugin.run(node)
 
 			if not xmlconfig:
-				xmlconfig = self.command('report.host.vm.config', [ host ])
+				xmlconfig = self.command('report.host.vm.config', [ node.name ])
 
-			if not self.bootVM(hipervisor, host, xmlconfig, autostart):
+			if not self.bootVM(hipervisor, node.name, xmlconfig, autostart):
 				#
 				# the disk hasn't been created yet,
 				# call a program to set them up, then
@@ -335,23 +340,17 @@ class Command(rocks.commands.start.host.command):
 				cmd = 'ssh -q %s ' % physhost
 				cmd += '/opt/rocks/bin/'
 				cmd += 'rocks-create-vm-disks '
-				cmd += '--hostname=%s' % host
+				cmd += '--hostname=%s' % node.name
 				os.system(cmd)
 
 				# let's try one last time to start the domain
-				if not self.bootVM(hipervisor, host, xmlconfig, autostart):
+				if not self.bootVM(hipervisor, node.name, xmlconfig, autostart):
 					# we should never get here
 					self.abort('unable to boot the virtual machine')
 
-	                #lets check the installAction
-	                installAction = None
-	                rows = self.db.execute("""select installaction
-	                        from nodes where name = '%s' """ % host)
-	                if rows > 0:
-	                        installAction, = self.db.fetchone()
-	                if installAction == "install vm frontend" :
+			if node.installaction == "install vm frontend" :
 				#this is a virtual frontend we need to change the boot action
-				self.command('set.host.boot',[ host, "action=os" ])
+				self.command('set.host.boot',[ node.name, "action=os" ])
 
 		# sync vlan
 		if sync_vlan:

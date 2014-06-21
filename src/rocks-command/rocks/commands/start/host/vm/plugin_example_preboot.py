@@ -62,12 +62,13 @@ import rocks.commands
 class Plugin(rocks.commands.Plugin):
 
 	def provides(self):
-		return 'preboot'
+		return 'plugin_preboot'
 
-	def run(self, host):
+	def run(self, node):
+		# node is of type rocks.db.mappings.base.Node
 		# here you can return a libvirt XML that will be used to boot this machine
 		# if you return None it will use the default XML which is:
-		# return self.owner.command('report.host.vm.config', [ host ])
+		# return self.owner.command('report.host.vm.config', [ node.name ])
 		return
 
 

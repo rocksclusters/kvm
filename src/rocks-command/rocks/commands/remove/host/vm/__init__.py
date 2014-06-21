@@ -151,8 +151,9 @@ class Command(rocks.commands.remove.host.command):
 		if not len(args):
 			self.abort('must supply at least one host')
 
-		for host in self.getHostnames(args):
-                	self.runPlugins(host)
+		for node in self.newdb.getNodesfromNames(args,
+				preload=['vm_defs', 'vm_defs.disks']):
+			self.runPlugins(node)
 			vmnodeid = None
 			mem = None
 			cpus = None
@@ -160,57 +161,36 @@ class Command(rocks.commands.remove.host.command):
 			disks = None
 
 			#
-			# get the node id of the VM
-			#
-			rows = self.db.execute("""select vn.id from
-				nodes n, vm_nodes vn where vn.node = n.id
-				and n.name = '%s' """ % host)
-			
-			if rows != 1:
-				continue
-
-			vmnodeid, = self.db.fetchone()
-
-			if not vmnodeid:
-				continue
-
-			#
 			# get the name of the physical node that hosts
 			# this VM
 			#
-			vm = rocks.vmextended.VMextended(self.db)
-			(physnodeid, physhost) = vm.getPhysNode(host)
 
-			if not physhost or not physnodeid:
-				continue
+			if node.vm_defs and node.vm_defs.physNode:
 
-			#
-			# try to undefine the domain in libvirt
-			#
-
-			libvirt.registerErrorHandler(handler, 'context')
-			try:
-				hipervisor = libvirt.open(rocks.vmconstant.connectionURL \
-						% physhost)
-				dom = hipervisor.lookupByName(host)
-				dom.undefine()
-			except libvirt.libvirtError, m:
-				if 'unable to connect' in str(m):
-					# connection problem just report it do not fail
-					print "Warning (libvirt): ", m
-				# the domain was not defined, no big deal
-				pass
+				#
+				# try to undefine the domain in libvirt
+				#
+				libvirt.registerErrorHandler(handler, 'context')
+				try:
+					hipervisor = libvirt.open(rocks.vmconstant.connectionURL \
+							% node.vm_defs.physNode.name)
+					dom = hipervisor.lookupByName(node.name)
+					dom.undefine()
+				except libvirt.libvirtError, m:
+					if 'unable to connect' in str(m):
+						# connection problem just report it do not fail
+						print "Warning (libvirt): ", m
+					# the domain was not defined, no big deal
+					pass
 
 			#
 			# now remove the relevant rows in the database for
 			# this VM
 			#
-			self.db.execute("""delete from vm_nodes where
-				id = %s""" % (vmnodeid))
-
-			self.db.execute("""delete from vm_disks where
-				vm_node = %s""" % (vmnodeid))
-
-
+			if node.vm_defs:
+				s = self.newdb.getSession()
+				s.delete(node.vm_defs)
+				for disk in node.vm_defs.disks:
+					s.delete(disk)
 
 RollName = "kvm"

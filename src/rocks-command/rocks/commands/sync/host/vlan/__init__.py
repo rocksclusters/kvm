@@ -88,40 +88,40 @@ class Command(rocks.commands.sync.host.command):
 
 
 	def run(self, params, args):
-		hosts = self.getHostnames(args, managed_only=1)
+		nodes = self.newdb.getNodesfromNames(args, managed_only=1,
+				preload = ['vm_defs'])
 
-		if len(hosts) < 1:
+
+		if len(nodes) < 1:
 			self.abort('must supply at least one host')
 
 		threads = []
 
-		for host in hosts:
+		for node in nodes:
 			#
 			# the name of the physical host that will boot
 			# this VM host
 			#
 			cmd = '/opt/rocks/bin/rocks report host vlan '
-			cmd += '%s | ' % host
+			cmd += '%s | ' % node.name
 
-			vm = rocks.vmextended.VMextended(self.db)
-			(physnodeid, physhost) = vm.getPhysNode(host)
+			if node.vm_defs and node.vm_defs.physNode:
 
-			if physnodeid and physhost:
-
-				cmd += self.getExecCommand(physhost)
+				cmd += self.getExecCommand(node.vm_defs.physNode.name)
 				# this is called only on a single host, no need to use parralel
 				os.system(cmd)
 
 			else:
 
 				cmd += '/opt/rocks/bin/rocks report script |'
-				cmd += self.getExecCommand(host)
+				cmd += self.getExecCommand(host.name)
 
-				p = Parallel(cmd, host)
+				p = Parallel(cmd, host.name)
 				threads.append(p)
 				p.start()
-				for thread in threads:
-					thread.join(timeout)
+
+		for thread in threads:
+			thread.join(timeout)
 
 
 RollName = "kvm"

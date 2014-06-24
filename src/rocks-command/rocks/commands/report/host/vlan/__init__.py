@@ -59,10 +59,11 @@
 
 import os
 import time
-import rocks.commands
-import rocks.vmextended
-
 import xml.sax.saxutils
+from sqlalchemy.orm import aliased
+
+from rocks.db.mappings.base import *
+import rocks.commands
 
 networking_file = '/etc/libvirt/networking/vlan.conf'
 
@@ -80,119 +81,100 @@ class Command(rocks.commands.HostArgumentProcessor,
 	"""
 
 
-	def bootVLAN(self, physhost, host):
+	def getDeviceVlanfromVnode(self, node):
+		"""Given a virtual node it returns a list of physical device
+		name and vlan number which are needed for the for this host
+		It does not return the bridged interface"""
+
+		s = self.newdb.getSession()
+		vlanids = set()
+		for net in node.networks:
+			if net.vlanID > 0:
+				# if vlanID == 0 we are bridging, so no need
+				# to do this
+				vlanids.add(net.vlanID)
+
+		if not vlanids:
+			return []
+
+		# on the physical node
+		# find the subnet of the vlanids on the physical host
+		# now find the physical device name corresponding to the subnets
+		# found in the previous query
+		networkvlan = aliased(Network)
+		devices = s.query(Network.device, networkvlan.vlanID).filter(
+				Network.node == node.vm_defs.physNode,
+				networkvlan.node == node.vm_defs.physNode,
+				Network.subnet_ID == networkvlan.subnet_ID,
+				# here it should be Network.vlanID != 0 no vlan%
+				sqlalchemy.not_(Network.device.like('vlan%')),
+				networkvlan.vlanID.in_(list(vlanids))).all()
+
+		return devices
+
+
+	def bootVLAN(self, node):
 		"""return a string with the commands necessary to start up 
 		the the VLAN relative to the given host and physhost"""
 
-		ret = ''
+		ret = ""
 
-		#get the vlanid of the VM
-		self.db.execute("""select net.vlanid
-			from networks net, nodes n
-			where net.node = n.id and net.vlanid > 0 
-			and n.name = "%s" """ % (host))
-		for row in self.db.fetchall():
-			vlanid= row[0]
+		for physicaldev in self.getDeviceVlanfromVnode(node):
+			device = 'p' + physicaldev.device
+			vlanid = physicaldev.vlanID
+			physhost = node.vm_defs.physNode
 
-			#given the vlanid get the network device on the dom0
-			nRow = self.db.execute("""select distinctrow net.device, net.subnet,
-				net.module, s.mtu, net.options, net.channel
-				from networks net, nodes n, subnets s
-				where net.node = n.id and 
-				if(net.subnet, net.subnet = s.id, true) and
-				n.name = "%s" and net.vlanid = %s order by net.id"""
-					% (physhost, vlanid))
+			if (physhost, device, vlanid) not in self.vlanProcessed:
 
-			for row in self.db.fetchall():
-				(device, subnetid, module, mtu, options, channel) = row
-				#print "device: ", device, vlanid
-				#
-				# look up the name of the interface that
-				# maps to this VLAN spec
-				#
-				rows = self.db.execute("""select net.device from
-					networks net, nodes n where
-					n.id = net.node and n.name = '%s'
-					and net.subnet = %d and
-					net.device not like 'vlan%%' """ %
-					(physhost, subnetid))
-				
-				if rows:
-					dev, = self.db.fetchone()
-					#
-					# check if already referencing 
-					# a physical device
-					#
-					if dev != device:
-						device = 'p' + dev
-				else:
-					self.abort('Unable to get device name for dev: ', device)
+				# let's check if the device is already up
+				ret += "ip link show %s.%s > /dev/null 2>&1 ||" % \
+						(device, vlanid)
 
-				if (physhost, device, vlanid) not in self.vlanProcessed:
+				ret += "vconfig add %s %s && ifconfig %s.%s up &&" \
+					" ip link set arp off dev %s.%s;" % \
+					(device, vlanid, device, vlanid, device, vlanid)
 
-					# let's check if the device is already up
-					ret += "ip link show %s.%s > /dev/null 2>&1 ||" % \
-							(device, vlanid)
-	
-					ret += "vconfig add %s %s && ifconfig %s.%s up &&" \
-						" ip link set arp off dev %s.%s;" % \
-						(device, vlanid, device, vlanid, device, vlanid)
-
-					self.vlanProcessed.add((physhost, device, vlanid))
+				self.vlanProcessed.add((physhost, device, vlanid))
 		if not ret:
-			ret = '# no vlan for ' + host
+			ret = '# no vlan for ' + node.name
 		return ret
 
 
-			
-	
 	def run(self, params, args):
 		# keep trac of the (physhost, device, vlanid) that we already processed
 		self.vlanProcessed = set()
-		hosts = self.getHostnames(args, managed_only=1)
+		nodes = self.newdb.getNodesfromNames(args, managed_only=1,
+				preload = ['vm_defs', 'vm_defs.physNode', 'networks'])
 
-		if len(hosts) < 1:
+
+		if len(nodes) < 1:
 			self.abort('must supply at least one host')
 
+		s = self.newdb.getSession()
 		self.beginOutput()
-		for host in hosts:
-			#
-			# the name of the physical host that will boot
-			# this VM host
-			#
-			vm = rocks.vmextended.VMextended(self.db)
-			(physnodeid, physhost) = vm.getPhysNode(host)
+		for node in nodes:
 
-
-			if not physhost or not physnodeid:
-				# this is a physical host let's find out its VMs
-				entry = self.db.execute("""select n.name 
-					from nodes as n, vm_nodes as vm 
-					where vm.physNode = 
-						(select id from nodes 
-						where name = '%s') 
-					and vm.node = n.id;"""
-					% (host))
-
-				if not entry > 0:
-					continue
-				self.addOutput(host, '<file name="%s">\n' % networking_file)
-				for (vm_host,) in self.db.fetchall():
-
-					temp_string = self.bootVLAN(host, vm_host)
-					temp_string = xml.sax.saxutils.escape(temp_string)
-					self.addOutput(host, temp_string)
-				self.addOutput(host, '</file>')
+			if node.vm_defs and node.vm_defs.physNode:
+				temp_string = self.bootVLAN(node)
+				self.addOutput(node.name, temp_string)
 
 			else:
-				temp_string = self.bootVLAN(physhost, host)
-				self.addOutput(host, temp_string)
+				# this is a physical host let's find out its VMs
+				vm_nodes = s.query(Node).join(VmNode, Node.vm_defs).filter(
+						VmNode.physNode == node).all()
+
+				if not vm_nodes:
+					continue
+
+				self.addOutput(node.name, '<file name="%s">\n' % networking_file)
+				for vm_node in vm_nodes:
+
+					temp_string = self.bootVLAN(vm_node)
+					temp_string = xml.sax.saxutils.escape(temp_string)
+					self.addOutput(node.name, temp_string)
+				self.addOutput(node.name, '</file>')
 
                 self.endOutput(padChar='')
-
-
-
-
 
 
 RollName = "kvm"

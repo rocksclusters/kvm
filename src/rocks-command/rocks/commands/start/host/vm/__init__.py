@@ -276,7 +276,7 @@ class Command(rocks.commands.start.host.command):
 
 	def run(self, params, args):
 		nodes = self.newdb.getNodesfromNames(args,
-				preload=['vm_defs', 'networks', 'vm_defs.disks']).all()
+				preload=['vm_defs', 'networks', 'vm_defs.disks'])
 		
 		if len(nodes) < 1:
 			self.abort('must supply at least one host')

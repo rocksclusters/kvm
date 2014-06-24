@@ -63,9 +63,10 @@ class Plugin(rocks.commands.Plugin):
 	def provides(self):
 		return 'disallocate'
 
-	def run(self, host):
+	def run(self, node):
 		# here you can disallocate the resource used by your VM
 		# in rocks DB
+		# node is of type rocks.db.mappings.base.Node
 		return 
 
 

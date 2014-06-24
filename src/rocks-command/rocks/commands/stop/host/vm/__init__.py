@@ -143,31 +143,35 @@ class Command(rocks.commands.stop.host.command):
 
 	def run(self, params, args):
 
-		hosts = self.getHostnames(args)
+		nodes = self.newdb.getNodesfromNames(args,
+				preload = ['vm_defs'])
+
 		(terminate, ) = self.fillParams( [
 			('terminate', 'n'),
 			])
 
 		terminate = self.str2bool(terminate)
 
-		if len(hosts) < 1:
+		if len(nodes) < 1:
 			self.abort('must supply host')
 
 		plugins = self.loadPlugins()
 
-		for host in hosts:
+		for node in nodes:
 
 			if not terminate:
 				#
 				# the name of the physical host that will boot
 				# this VM host
 				#
-				import rocks
-				vm = rocks.vmextended.VMextended(self.db)
-				(physnodeid, physhost) = vm.getPhysNode(host)
+				if not node.vm_defs:
+					self.abort("host %s is not a virtual host" % node.name)
 
-				if not physhost or not physnodeid:
-					continue
+				if not node.vm_defs.physNode:
+					self.abort("host %s does not have a physical host" % node.name)
+
+				# get the physical node that houses this VM
+				physhost = node.vm_defs.physNode.name
 
 				import rocks.vmconstant
 				hipervisor = libvirt.open(rocks.vmconstant.connectionURL 
@@ -175,7 +179,7 @@ class Command(rocks.commands.stop.host.command):
 				libvirt.registerErrorHandler(handler, 'context')
 
 				try:
-					domU = hipervisor.lookupByName(host)
+					domU = hipervisor.lookupByName(node.name)
 					domU.destroy()
 					domU.undefine()
 				except libvirt.libvirtError, m:
@@ -186,7 +190,7 @@ class Command(rocks.commands.stop.host.command):
 			#
 			for plugin in plugins:
 				syslog.syslog(syslog.LOG_INFO, 'run %s' % plugin)
-				plugin.run(host)
+				plugin.run(node)
 
 
 

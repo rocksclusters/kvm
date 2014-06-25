@@ -56,14 +56,14 @@
 #
 
 import os
-import rocks.commands
 import re
 import syslog
 
 import sys
 sys.path.append('/usr/lib64/python2.' + str(sys.version_info[1]) + '/site-packages')
 sys.path.append('/usr/lib/python2.' + str(sys.version_info[1]) + '/site-packages')
-import libvirt
+import rocks.commands
+import rocks.db.vmextend
 
 class Command(rocks.commands.report.host.command):
 	"""
@@ -164,109 +164,31 @@ class Command(rocks.commands.report.host.command):
 		return returnxml
 
 
-	def getBridgeDevName(self, host, subnetid, vlanid):
-		returnDeviceName = None
-
-		if vlanid:
-			#
-			# first make sure the vlan is defined for the physical
-			# host and get the logical subnet where the vlan is tied
-			#
-			rows = self.db.execute("""select net.subnet from
-				networks net, nodes n where net.node = n.id and
-				n.name = '%s' and (net.device like 'vlan%%' or
-				net.device like '%%.%d') and
-				net.vlanid = %d""" % (host, vlanid, vlanid))
-
-			if rows == 0:
-				self.abort('vlan %d not defined for host %s' %
-					(vlanid, host))
-			vlanOnLogical, = self.db.fetchone()
-
-			rows = self.db.execute("""select net.device from
-				networks net, nodes n where net.node = n.id
-				and n.name = '%s' and
-				net.device not like 'vlan%%' and
-				net.subnet = %d""" % (host, vlanOnLogical))
-		else:
-			rows = self.db.execute("""select net.device from
-				networks net, nodes n where net.node = n.id and
-				n.name = '%s' and net.ip is not NULL and
-				net.device not like 'vlan%%' and
-				net.subnet = %d""" % (host, subnetid))
-		if rows:
-			dev, = self.db.fetchone()
-			returnDeviceName = dev
-			if vlanid:
-				reg = re.compile('.*\.%d' % vlanid)
-				if not reg.match(dev):
-					#we have to add the vlan tag to the device
-					returnDeviceName = '%s.%d' % (dev, vlanid)
-		return returnDeviceName
-
-
 	def getInterfaces(self, node):
 		"""return the xml snippet relative to the interfaces"""
 
 		returnxml = []
-		
-		physhost = node.vm_defs.physNode.name
-		for network in node.networks:
 
-			if not network.mac or not network.subnet_ID or \
-					network.disable_kvm:
-				# is mac is None or if subnet_ID is None this 
-				# interface cannot be configured se let's skip 
-				# it, if disable_kvm the users has explicitely 
-				# disabled it
-				continue
+		# we have to type of interface:
+		# - tap interface (or directly attached interface): that have not 
+		#   connectivity with the host
+		# - bridged interface: these are attached through a standard bridge
 
+		for tap_inter in self.newdb.getPhysTapDevicefromVnode(node):
+			returnxml.append("    <interface type='direct'>")
+			# we need to attach to the pyshical interface which starts with p
+			dev = "p" + tap_inter["device"] + "." + str(tap_inter["vlanID"])
+			returnxml.append("      <source dev='p%s' mode='bridge'/>" % dev )
+			returnxml.append("      <mac address='%s'/>" % tap_inter["mac"])
+			returnxml.append("      <model type='virtio' />")
+			returnxml.append("    </interface>")
 
-			# we need to understand if it is a directly attached 
-			# interface (macvtap) or a bridged interface 
-			#
-			# if it is directly attached there should be an interface 
-			# named vlan<vlanid> if it's bridged there should be an 
-			# interface on the vlanid with an IP address or not vlanID
-			# 
-			bridged = False
-			if not network.vlanID :
-				bridged = True
-			else:
-				rows = self.db.execute("""select net.device, net.ip
-					from networks net, nodes n
-					where net.node = n.id and
-					n.name = '%s' and net.vlanid = %d""" % 
-					(physhost, network.vlanID))
-	
-				if rows  > 1 :
-					self.abort("There are too many interfaces defined on %s with vlan %d" %
-						(physhost, network.vlanID))
-	
-				if rows == 0 :
-					self.abort("There no interface defined on %s with vlan %d" %
-						(physhost, network.vlanID))
-	
-				physDevName, physDevIP = self.db.fetchone()
-
-				if physDevIP == None and 'vlan' in physDevName :
-					bridged = False
-				else:
-					bridged = True
-			if not bridged:
-				returnxml.append("    <interface type='direct'>")
-				dev = self.getBridgeDevName(physhost, network.subnet_ID, network.vlanID)
-				returnxml.append("      <source dev='p%s' mode='bridge'/>" % dev )
-				returnxml.append("      <mac address='%s'/>" % network.mac)
-				returnxml.append("      <model type='virtio' />")
-				returnxml.append("    </interface>")
-			else:
-				returnxml.append("    <interface type='bridge'>")
-				dev = self.getBridgeDevName(physhost, network.subnet_ID, network.vlanID)
-				returnxml.append("      <source bridge='%s'/>" % dev )
-				returnxml.append("      <mac address='%s'/>" % network.mac)
-				returnxml.append("      <model type='virtio' />")
-				returnxml.append("    </interface>")
+		for bridged_inter in self.newdb.getPhysBridgedDevicefromVnode(node):
+			returnxml.append("    <interface type='bridge'>")
+			returnxml.append("      <source bridge='%s'/>" % bridged_inter["device"])
+			returnxml.append("      <mac address='%s'/>" % bridged_inter["mac"])
+			returnxml.append("      <model type='virtio' />")
+			returnxml.append("    </interface>")
 
 		return returnxml
 

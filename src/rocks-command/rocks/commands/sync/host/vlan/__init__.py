@@ -114,9 +114,9 @@ class Command(rocks.commands.sync.host.command):
 			else:
 
 				cmd += '/opt/rocks/bin/rocks report script |'
-				cmd += self.getExecCommand(host.name)
+				cmd += self.getExecCommand(node.name)
 
-				p = Parallel(cmd, host.name)
+				p = Parallel(cmd, node.name)
 				threads.append(p)
 				p.start()
 

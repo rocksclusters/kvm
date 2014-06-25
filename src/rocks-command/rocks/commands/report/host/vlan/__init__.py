@@ -60,9 +60,9 @@
 import os
 import time
 import xml.sax.saxutils
-from sqlalchemy.orm import aliased
 
 from rocks.db.mappings.base import *
+import rocks.db.vmextend
 import rocks.commands
 
 networking_file = '/etc/libvirt/networking/vlan.conf'
@@ -80,48 +80,15 @@ class Command(rocks.commands.HostArgumentProcessor,
 	</example>
 	"""
 
-
-	def getDeviceVlanfromVnode(self, node):
-		"""Given a virtual node it returns a list of physical device
-		name and vlan number which are needed for the for this host
-		It does not return the bridged interface"""
-
-		s = self.newdb.getSession()
-		vlanids = set()
-		for net in node.networks:
-			if net.vlanID > 0:
-				# if vlanID == 0 we are bridging, so no need
-				# to do this
-				vlanids.add(net.vlanID)
-
-		if not vlanids:
-			return []
-
-		# on the physical node
-		# find the subnet of the vlanids on the physical host
-		# now find the physical device name corresponding to the subnets
-		# found in the previous query
-		networkvlan = aliased(Network)
-		devices = s.query(Network.device, networkvlan.vlanID).filter(
-				Network.node == node.vm_defs.physNode,
-				networkvlan.node == node.vm_defs.physNode,
-				Network.subnet_ID == networkvlan.subnet_ID,
-				# here it should be Network.vlanID != 0 no vlan%
-				sqlalchemy.not_(Network.device.like('vlan%')),
-				networkvlan.vlanID.in_(list(vlanids))).all()
-
-		return devices
-
-
 	def bootVLAN(self, node):
 		"""return a string with the commands necessary to start up 
 		the the VLAN relative to the given host and physhost"""
 
 		ret = ""
 
-		for physicaldev in self.getDeviceVlanfromVnode(node):
-			device = 'p' + physicaldev.device
-			vlanid = physicaldev.vlanID
+		for physicaldev in self.newdb.getPhysTapDevicefromVnode(node):
+			device = 'p' + physicaldev["device"]
+			vlanid = physicaldev["vlanID"]
 			physhost = node.vm_defs.physNode
 
 			if (physhost, device, vlanid) not in self.vlanProcessed:

@@ -115,29 +115,29 @@ class Command(rocks.commands.pause.host.command):
 	"""
 
 	def run(self, params, args):
-		hosts = self.getHostnames(args)
+		nodes = self.newdb.getNodesfromNames(args, managed_only=1,
+				preload = ['vm_defs', 'vm_defs.physNode'])
 		
-		if len(hosts) < 1:
+		if len(nodes) < 1:
 			self.abort('must supply host')
 
-		for host in hosts:
+		for node in nodes:
 			#
 			# the name of the physical host that will boot
 			# this VM host
 			#
-			vm = rocks.vmextended.VMextended(self.db)
-			(physnodeid, physhost) = vm.getPhysNode(host)
-
-			if not physhost or not physnodeid:
-				continue
-
-			#
-			# send the pause command to the physical node
-			#
-			import rocks.vmconstant
-			hipervisor = libvirt.open( rocks.vmconstant.connectionURL % physhost)
-			domU = hipervisor.lookupByName(host)
-			domU.suspend()
+			if node.vm_defs and node.vm_defs.physNode:
+				#
+				# send the pause command to the physical node
+				#
+				import rocks.vmconstant
+				hipervisor = libvirt.open(rocks.vmconstant.connectionURL % 
+							node.vm_defs.physNode.name)
+				domU = hipervisor.lookupByName(node.name)
+				domU.suspend()
+			else:
+				self.abort("virtual host %s does not have a valid physical host" %
+						node.name)
 
 
 RollName = "kvm"

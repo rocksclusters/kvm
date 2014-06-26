@@ -117,41 +117,25 @@ class Command(rocks.commands.resume.host.command):
 	"""
 
 	def run(self, params, args):
-		hosts = self.getHostnames(args)
-		
-		if len(hosts) < 1:
+		nodes = self.newdb.getNodesfromNames(args, managed_only=1,
+				preload = ['vm_defs', 'vm_defs.physNode'])
+
+		if len(nodes) < 1:
 			self.abort('must supply host')
 
-		for host in hosts:
-			#
-			# the name of the physical host that will boot
-			# this VM host
-			#
-			rows = self.db.execute("""select vn.physnode from
-				vm_nodes vn, nodes n where n.name = '%s'
-				and n.id = vn.node""" % (host))
-
-			if rows == 1:
-				physnodeid, = self.db.fetchone()
+		for node in nodes:
+			if node.vm_defs and node.vm_defs.physNode:
+				#
+				# send the pause command to the physical node
+				#
+				import rocks.vmconstant
+				hipervisor = libvirt.open(rocks.vmconstant.connectionURL % 
+				                        node.vm_defs.physNode.name)
+				domU = hipervisor.lookupByName(node.name)
+				domU.resume()
 			else:
-				continue
-
-			rows = self.db.execute("""select name from nodes where
-				id = %s""" % (physnodeid))
-
-			if rows == 1:
-				physhost, = self.db.fetchone()
-			else:
-				continue
-
-			#
-			# send the resume command to the physical node
-			#
-			import rocks.vmconstant
-			hipervisor = libvirt.open( rocks.vmconstant.connectionURL % physhost)
-			domU = hipervisor.lookupByName(host)
-			domU.resume()
-
+				self.abort("virtual host %s does not have a valid physical host" %
+				                node.name)
 
 
 RollName = "kvm"

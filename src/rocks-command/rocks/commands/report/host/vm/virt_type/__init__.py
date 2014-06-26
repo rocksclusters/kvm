@@ -104,31 +104,28 @@ class Command(rocks.commands.report.host.command):
 	</example>
 	"""
 
-	def getVirtType(self, host):
+	def getVirtType(self, node):
 		#
 		# get the VM virtualization type 
 		#
-		rows = self.db.execute("""select vn.virt_type from
-			vm_nodes vn, nodes n where
-			vn.node = n.id and n.name = '%s' """ % host)
-
-		virtType, =self.db.fetchone()
-		if virtType is None:
-			self.addOutput(host, 'para') 
+		if node.vm_defs and node.vm_defs.virt_type:
+			self.addOutput(node.name, '%s' % 
+					node.vm_defs.virt_type) 
 		else:
-			self.addOutput(host, '%s' % virtType) 
+			self.addOutput(node.name, 'para') 
 		return 
 
 	def run(self, params, args):
-		hosts = self.getHostnames(args)
+		nodes = self.newdb.getNodesfromNames(args, managed_only=1,
+				preload = ['vm_defs'])
 
-		if len(hosts) < 1:
+		if len(nodes) < 1:
 			self.abort('must supply host')
 
 		self.beginOutput()
-		for host in hosts:
+		for node in nodes:
 			try:
-				self.getVirtType(host)
+				self.getVirtType(node)
 			except TypeError:
 				pass
 

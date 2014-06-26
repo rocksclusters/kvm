@@ -211,7 +211,7 @@ class Command(rocks.commands.list.host.command):
 					disk.name)
 
 				diskstr = '%s:%s,%s,%s' % \
-					(disk.vbd_Type, file,
+					(disk.vbd_type, file,
 					disk.device, disk.mode)
 				disks.append((diskstr, disk.size))
 

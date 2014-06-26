@@ -95,25 +95,25 @@ class Command(rocks.commands.report.host.command):
 			#
 			file = os.path.join(disk.prefix, disk.name)
 
-			if disk.vbd_Type in [ 'file', 'qcow2', 'qed' ]:
+			if disk.vbd_type in [ 'file', 'qcow2', 'qed' ]:
 				a = "    <disk type='file' device='disk'>"
 				returnxml.append(a)
 
-				if disk.vbd_Type == 'file':
+				if disk.vbd_type == 'file':
 					#default
 					a = "      <driver name='qemu' type='raw'/>"
-				elif disk.vbd_Type == 'qcow2':
+				elif disk.vbd_type == 'qcow2':
 					a = "      <driver name='qemu' type='qcow2'/>"
-				elif disk.vbd_Type == 'qed':
+				elif disk.vbd_type == 'qed':
 					a = "      <driver name='qemu' type='qed'/>"
 				returnxml.append(a)
-				#elif disk.vbd_Type == 'tap:aio':
+				#elif disk.vbd_type == 'tap:aio':
 				#	a = "<driver name='tap' type='aio'/>"
 
 				a = "      <source file='%s'/>" % file
 				returnxml.append(a)
 
-			elif disk.vbd_Type == 'phy':
+			elif disk.vbd_type == 'phy':
 				a = "    <disk type='block' device='disk'>"
 				returnxml.append(a)
 

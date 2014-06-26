@@ -312,14 +312,13 @@ class Command(rocks.commands.HostArgumentProcessor, rocks.commands.set.command):
 				#
 				# parse the disk specification
 				#
-				(vbd_type, prefix, name, device, mode) = \
-					rocks.commands.add.host.vm.parseDisk(d)
+				dict = rocks.commands.add.host.vm.parseDisk(d)
 
 				self.db.execute("""insert into vm_disks (vm_node, vbd_type,
 					prefix, name, device, mode, size)
 					values (%s, '%s', '%s', '%s', '%s', '%s', %s)""" %
-					(vmnodeid, vbd_type, prefix, name, device, mode,
-					dsize))
+					(vmnodeid, dict['vbd_type'], dict['prefix'],
+					dict['name'], dict['device'], dict['mode'], dsize))
 
 				index += 1
 				

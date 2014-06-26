@@ -232,8 +232,10 @@ import string
 import os
 import os.path
 import IPy
+
 import rocks.commands
 import rocks.vm
+from rocks.db.mappings.base import *
 
 
 
@@ -241,25 +243,27 @@ def parseDisk(disk):
 	"""parse a string representing a disk and returns a touple with
 	the various components. Used by rocks set host vm."""
 
+	dict={}
+
 	d = disk.split(',')
 	if len(d) != 3:
                 rocks.commands.Abort('Invalid disk specification.'
 				' Please see rocks add host vm help.')
 
-	device = d[1]
-	mode = d[2]
+	dict['device'] = d[1]
+	dict['mode'] = d[2]
 
 	e = d[0].split(':')
-	vbd_type = ':'.join(e[0:-1])
+	dict['vbd_type'] = ':'.join(e[0:-1])
 
-	if vbd_type == 'phy':
-		prefix = ''
-		name = e[-1]	# allows for '/' in name for LVM
+	if dict['vbd_type'] == 'phy':
+		dict['prefix'] = ''
+		dict['name'] = e[-1]	# allows for '/' in name for LVM
 	else:
-		prefix = os.path.dirname(e[-1])
-		name = os.path.basename(e[-1])
+		dict['prefix'] = os.path.dirname(e[-1])
+		dict['name'] = os.path.basename(e[-1])
 
-	return (vbd_type, prefix, name, device, mode)
+	return dict
 
 
 
@@ -370,151 +374,57 @@ class Command(rocks.commands.HostArgumentProcessor, rocks.commands.add.command):
 	</example>
 	"""
 
-	def addToDB(self, nodename, membership, ip, subnet, physnodeid, rack,
-		rank, mem, cpus, slice, mac, num_macs, disk, disksize, vlanids,
-		module, virt_type):
-
-		#
-		# need to add entry in node and networks tables here
-		#
-		rows = self.db.execute("""select id from memberships where
-			name = '%s'""" % (membership))
-
-		if rows == 1:
-			membershipid, = self.db.fetchone()
-		else:
-			self.abort('could not get membership id for ' + 
-				'membership "%s"' % (membership))
-
-		if subnet:
-			rows = self.db.execute("""select id from subnets where
-				name = '%s'""" % (subnet))
-
-			if rows == 1:
-				subnetid, = self.db.fetchone()
-			else:
-				self.abort('could not get subnet id for ' + 
-					'subnet "%s"' % (subnet))
-		else:
-			subnetid = 'NULL'
-
-		#
-		# check if the nodename is already in the nodes table. if
-		# so, abort.
-		#
-		rows = self.db.execute("""select id from nodes where
-			name = '%s'""" % (nodename))
-
-		if rows > 0:
-			self.abort('node "%s" is ' % (nodename) + \
-				'already in the database')
+	def addToDB(self, physnode, membership, subnet, nodename, ip, mem, cpus, 
+			slice, mac, num_macs, disk, disksize, vlanids, 
+			virt_type):
 
 		#
 		# we're good to go -- add the VM to the nodes table
 		#
 		# use add host command directly
-
 		success = self.command('add.host', [ nodename, 
-				'membership=%s' % membership, 
+				'membership=%s' % membership.name, 
 				'cpus=%d' % int(cpus),
-				'rack=%d' % int(rack),
-				'rank=%d' % int(rank),
+				'rack=%d' % int(physnode.rack),
+				'rank=%d' % int(physnode.rank),
 				'os=linux'])
 
-		rows = self.db.execute("""SELECT ID FROM nodes WHERE
-			name='%s'""" % nodename) 
-
-		if rows == 1:
-			vmnodeid, = self.db.fetchone()
-		else:
-			self.abort('could not get node id for new VM')
-
-		rows = self.db.execute("""insert into networks (node, mac, ip,
-			name, device, subnet, module) values (%s, '%s', %s,
-			'%s', '%s', %s, %s)""" % (vmnodeid, mac, ip,
-			nodename, 'eth0', subnetid, module))
-
-		vlanindex = 0
-		if rows == 1 and vlanids and len(vlanids) > vlanindex:
-			if vlanids[vlanindex] != 'none':
-				rows = self.db.execute("""select
-					last_insert_id()""")
-				if rows == 1:
-					networksid, = self.db.fetchone()
-					self.db.execute("""update networks set
-						vlanid = %s where id = %d""" %
-						(vlanids[vlanindex],
-						networksid))
-
-			vlanindex += 1
-		
-		#
-		# put in additional MACs here
-		#
-		for m in range(1, num_macs):
-			mac = self.getNextMac()
-
-			rows = self.db.execute("""insert into networks (node,
-				mac, device, module) values (%s, '%s', '%s',
-				%s)""" % (vmnodeid, mac, 'eth%d' % (m), module))
-
-			if rows == 1 and vlanids and len(vlanids) > vlanindex:
-				if vlanids[vlanindex] != 'none':
-					rows = self.db.execute("""select
-						last_insert_id()""")
-					if rows == 1:
-						networksid, = self.db.fetchone()
-						self.db.execute("""update
-							networks set
-							vlanid = %s where
-							id = %d""" %
-							(vlanids[vlanindex],
-							networksid))
-
-				vlanindex += 1
-
-		rows = self.db.execute("""insert into vm_nodes (physnode, node,
-			mem, slice, virt_type) values (%s, %s, %s, %s, '%s')""" %
-			(physnodeid, vmnodeid, mem, slice, virt_type))
-
-		if rows == 1:
-			rows = self.db.execute("""select last_insert_id()""")
-			if rows == 1:
-				vmnodeid, = self.db.fetchone()
-
-		if rows != 1:
-			#
-			# an error occurred, don't continue
-			#
-			self.abort('could not update the vm_nodes table')
+		# get the newnode
+		s = self.newdb.getSession()
+		node = Node.load(s, name=nodename).one()
 
 		#
-		# parse the disk specification
+		# insert the additional network interfaces
 		#
-		(vbd_type, prefix, name, device, mode) = parseDisk(disk)
+		for index in range(0, num_macs):
 
-		self.db.execute("""insert into vm_disks (vm_node, vbd_type,
-			prefix, name, device, mode, size)
-			values (%s, '%s', '%s', '%s', '%s', '%s', %s)""" %
-			(vmnodeid, vbd_type, prefix, name, device, mode,
-			disksize))
+			if not mac:
+				mac = self.getNextMac()
 
+			vlan=None
+			if vlanids and len(vlanids) > index:
+				if vlanids[index] != 'none':
+					vlan = int(vlanids[index])
 
-	def getNodename(self, membership, rack, rank, slice):
-		nodename = None
+			net = Network(node=node, mac=mac, ip=ip, name=node.name, 
+				device='eth%d' % index, subnet=subnet, 
+				vlanID=vlan)
+			mac = None
+			ip = None
+			subnet = None
+			s.add(net)
 
+		# 
+		# make this node a virtual node: vm_node and vm_disk 
+		# tables
 		#
-		# get the appliance basename for this membership
-		#
-		rows = self.db.execute("""select a.name from appliances a,
-			memberships m where m.name = '%s' and
-			m.appliance = a.id""" % (membership))
+		vm_node = VmNode(node=node, physNode=physnode, mem=mem, 
+				slice=slice, virt_type=virt_type)
+		s.add(vm_node)
 
-		if rows == 1:
-			basename, = self.db.fetchone()
-			nodename = '%s-%s-%s-%s' % (basename, rack, rank, slice)
-
-		return nodename
+		dict = parseDisk(disk)
+		disk = VmDisk(node=vm_node, size=disksize, **dict)
+		s.add(disk)
 
 
 	def getNextIP(self, name):
@@ -555,40 +465,37 @@ class Command(rocks.commands.HostArgumentProcessor, rocks.commands.add.command):
 			self.abort('no VM MAC base address is defined')
 
 
-		rows = self.db.execute("""select mac from networks where
-			mac is not NULL""")
-
 		max = 0
-		if rows > 0:
-			for m, in self.db.fetchall():
+		for m,  in self.newdb.getSession().query(Network.mac).\
+				filter(Network.mac != None).all():
 
-				if len(m) > 18:
-					# skip IB mac addresses from this algorithm
-					continue
+			if len(m) > 18:
+				# skip IB mac addresses from this algorithm
+				continue
 
-				mac = self.makeOctets(m)
+			mac = self.makeOctets(m)
 
-				i = 0
-				match = 1
-				for a in base_addr:
-					if (base_addr[i] & mask[i]) != \
-							(mac[i] & mask[i]):
-						match = 0
-						break
-					i += 1
+			i = 0
+			match = 1
+			for a in base_addr:
+				if (base_addr[i] & mask[i]) != \
+						(mac[i] & mask[i]):
+					match = 0
+					break
+				i += 1
 
-				if match == 0:
-					continue
+			if match == 0:
+				continue
 
-				i = 0
-				x = 0
-				for a in range(len(mac) - 1, -1, -1):
-					y = (mac[a] * (2 ** (8 * i)))
-					x += y
-					i += 1
-					
-				if x > max:
-					max = x
+			i = 0
+			x = 0
+			for a in range(len(mac) - 1, -1, -1):
+				y = (mac[a] * (2 ** (8 * i)))
+				x += y
+				i += 1
+				
+			if x > max:
+				max = x
 
 		newmac = []
 
@@ -635,34 +542,24 @@ class Command(rocks.commands.HostArgumentProcessor, rocks.commands.add.command):
 		return ':'.join(newmac)
 				
 
-	def addVMHost(self, host, membership, nodename, ip, subnet, mem, cpus,
-		slice, mac, num_macs, disk, disksize, vlan, module, virt_type):
+	def addVMHost(self, node, membership, subnet, nodename, ip, mem, cpus,
+		slice, mac, num_macs, disk, disksize, vlan, virt_type):
+		"""node is a Node type and membership is a Membership type, 
+		subnet is a Subnet type. All other input params are strings"""
 
-		rows = self.db.execute("""select id, rack, rank from nodes where
-			name = '%s'""" % (host))
-
-		if rows == 1:
-			nodeid, rack, rank = self.db.fetchone()
-		else:
-			self.abort('could not find an ID for host %s' % (host))
-
-		rows = self.db.execute("""select name from nodes""")
-		knownhosts = self.db.fetchall()
+		s = self.newdb.getSession()
+		knownhosts = s.query(Node.name).all()
 
 		if not slice:
 			#
 			# find the next free slice in the database
 			#
-			rows = self.db.execute("""select max(slice) from
-				vm_nodes where physnode = %s""" % (nodeid))
-
-			if rows > 0:
-				max, = self.db.fetchone()
-				if max:
-					slice = int(max) + 1
-				else:
-					slice = 0
-
+			slices = s.query(sqlalchemy.sql.func.max(VmNode.slice)).\
+					filter(VmNode.physNode == node).all()
+			slice = 0
+			if slices[0][0]:
+				slice = slices[0][0]
+			
 			#
 			# special case where the user didn't specify the
 			# slice *and* the nodename, then we are allowed to
@@ -670,16 +567,16 @@ class Command(rocks.commands.HostArgumentProcessor, rocks.commands.add.command):
 			# nodename
 			#
 			while not nodename:
-				nodename = self.getNodename(membership, rack,
-					rank, slice)
+				nodename = '%s-%s-%s-%s' % (membership.appliance.name, 
+						node.rack, node.rank, slice)
 
 				if (nodename,) in knownhosts:
 					nodename = None
 					slice += 1
 
 		if not nodename:
-			nodename = self.getNodename(membership, rack, rank,
-				slice)
+			nodename = '%s-%s-%s-%s' % (membership.appliance.name, 
+					node.rack, node.rank, slice)
 
 			if (nodename,) in knownhosts:
 				#
@@ -697,49 +594,38 @@ class Command(rocks.commands.HostArgumentProcessor, rocks.commands.add.command):
 			vm = rocks.vm.VM(self.db)
 
 			vbd_type = 'file'
-			prefix = vm.getLargestPartition(host)
+			prefix = vm.getLargestPartition(node.name)
 			device = 'vda'
 			name = '%s.%s' % (nodename, device)
 			mode = 'virtio'
 
 			if not prefix:
 				self.abort('could not find a partition on '
-					+ 'host (%s) to hold the ' % host
+					+ 'host (%s) to hold the ' % node.name
 					+ 'VM\'s disk image')
 
 			disk = '%s:%s,%s,%s' % (vbd_type, 
 				os.path.join(prefix, 'kvm/disks', name),
 				device, mode)
 
-		if not mac:
-			mac = self.getNextMac()
-
 		if not ip:
-			if membership == 'Hosted VM':
-				ip = 'NULL'
+			if membership.name == 'Hosted VM':
+				ip = None
 			else:
-				ip = "'%s'" % self.getNextIP(subnet)
-		else:
-			#
-			# make sure the ip is single quoted
-			#
-			newip = "'%s'" % ip.strip("'")
-			ip = newip
+				ip = self.getNextIP(subnet.name)
+		if ip:
+			ip = ip.strip("'")
 
 		if vlan:
 			vlanids = vlan.split(',')
 		else:
 			vlanids = None
 
-		if not module:
-			module = 'NULL'
-
 		#
 		# we now have all the parameters -- add them to the database
 		#
-		self.addToDB(nodename, membership, ip, subnet, nodeid, rack,
-			rank, mem, cpus, slice, mac, num_macs, disk, disksize,
-			vlanids, module, virt_type)
+		self.addToDB(node, membership, subnet, nodename, ip, mem, cpus, 
+			slice, mac, num_macs, disk, disksize, vlanids, virt_type)
 
 		#
 		# set the default installaction
@@ -750,19 +636,20 @@ class Command(rocks.commands.HostArgumentProcessor, rocks.commands.add.command):
 
 		# HVMs boot just like real hardware
 		if virt_type == 'hvm':
-			self.command('set.host.installaction', [ nodename, 'install headless' ] )
-			self.command('set.host.runaction', [ nodename, 'os' ] )
+			self.command('set.host.installaction', [nodename, 
+					'install headless'])
+			self.command('set.host.runaction', [nodename, 'os'])
 		#
 		# set the first boot state to 'install'
 		#
-		self.command('set.host.boot', [ nodename, 'action=install' ] )
+		self.command('set.host.boot', [nodename, 'action=install'])
 
 		#
 		# print the name of the new VM
 		#
 		self.beginOutput()
 		self.addOutput('', 'added VM %s on physical node %s' %
-			(nodename, host))
+			(nodename, node.name))
 		self.endOutput()
 
 
@@ -797,9 +684,9 @@ class Command(rocks.commands.HostArgumentProcessor, rocks.commands.add.command):
 
 		virt_type=virt_type.lower()
 
-		hosts = self.getHostnames(args)
+		nodes = self.newdb.getNodesfromNames(args)
 
-		if len(hosts) > 1:
+		if len(nodes) > 1:
 			if nodename:
 				self.abort("can't supply the 'name' " +
 					"parameter with more than one host")
@@ -822,15 +709,27 @@ class Command(rocks.commands.HostArgumentProcessor, rocks.commands.add.command):
 		except:
 			self.abort("the num_macs parameter must be an integer")
 
+		membership_db = self.newdb.getSession().query(Membership).filter(
+				Membership.name == membership).\
+				options(sqlalchemy.orm.joinedload('appliance')).one()
+
+		if not membership_db.appliance :
+			self.abort("membership %s is not valid" % membership)
+
+
 		if membership == 'Hosted VM':
 			ip = None
-			subnet = None
-		module = None
+			subnet_db = None
+		else:
+			subnet_db = self.newdb.getSession().query(Subnet).\
+					filter(Subnet.name == subnet).one()
 
-		for host in hosts:
-			self.addVMHost(host, membership, nodename, ip, subnet,
+
+
+		for node in nodes:
+			self.addVMHost(node, membership_db, subnet_db, nodename, ip,
 				mem, cpus, slice, mac, num_macs, disk, disksize,
-				vlan, module,virt_type)
+				vlan, virt_type)
 
 		syncit = self.str2bool(sync_config)
 
@@ -839,7 +738,5 @@ class Command(rocks.commands.HostArgumentProcessor, rocks.commands.add.command):
 			# reconfigure and restart the appropriate rocks services
 			#
 			self.command('sync.config')
-
-
 
 RollName = "kvm"

@@ -136,6 +136,7 @@
 import os.path
 import rocks.commands
 import rocks.commands.add.host.vm
+from rocks.db.mappings.base import *
 
 
 class Command(rocks.commands.HostArgumentProcessor, rocks.commands.set.command):
@@ -158,7 +159,8 @@ class Command(rocks.commands.HostArgumentProcessor, rocks.commands.set.command):
 	</param>
 
 	<param type='string' name='disksize'>
-	The size of the VM disk in gigabytes.
+	The size of the VM disk in gigabytes. If more than one disk is
+	supplied the sizes should be separated by space.
 	</param>
 
 	<param type='string' name='mem'>
@@ -196,7 +198,7 @@ class Command(rocks.commands.HostArgumentProcessor, rocks.commands.set.command):
 			self.abort('"mem" parameter must be an integer')
 
 		if physnode:
-			p = self.getHostnames([physnode])
+			p = self.newdb.getNodesfromNames([physnode])
 			if len(p) == 0:
 				self.abort('physnode "%s" does not exist'
 					% (physnode))
@@ -206,56 +208,26 @@ class Command(rocks.commands.HostArgumentProcessor, rocks.commands.set.command):
 
 			physnode = p[0]
 		
-		hosts = self.getHostnames(args)
-
-		if len(hosts) != 1:
+		nodes = self.newdb.getNodesfromNames(args, preload=['vm_defs',
+			'vm_defs.physNode', 'networks', 'vm_defs.disks'])
+		if len(nodes) != 1:
 			self.abort('must supply only one host')
+		node = nodes[0]
 
-		host = hosts[0]
 
-		rows = self.db.execute("""select vn.id from nodes n,
-			vm_nodes vn where vn.node = n.id and
-			n.name = '%s'""" % host)
+		s = self.newdb.getSession()
 
-		if rows == 0:
-			#
-			# there is no VM specification in the database.
-			# let's create a basic row for this VM
-			#
-			rows = self.db.execute("""select id from nodes where
-				name = '%s'""" % host)
-
-			#
-			# we know that 'host' is in the nodes table, otherwise
-			# getHostnames above would have returned a zero-length
-			# list
-			#
-			vmnode, = self.db.fetchone()
-
-			rows = self.db.execute("""insert into vm_nodes
-				(node) values ('%d')""" % (vmnode))
-
-			if rows == 1:
-				rows = self.db.execute("""select
-					last_insert_id()""")
-				if rows == 1:
-					vmnodeid, = self.db.fetchone()
-				else:
-					self.abort('could not get node id ' +
-						'for new VM')
+		if not node.vm_defs:
+			# this node did not have a vm_node let's add it
+			vm_node = VmNode(node=node)
+			s.add(vm_node)
 		else:
-			vmnodeid, = self.db.fetchone()
+			vm_node = node.vm_defs
 
 		if physnode:
-			rows = self.db.execute("""select id from nodes where
-				name = '%s'""" % (physnode))
-		
-			physnodeid, = self.db.fetchone()
+			# set the physicalNode of this virtual node
+			vm_node.physNode = physnode
 
-			self.db.execute("""update vm_nodes set
-				physnode = '%s' where id = '%s'""" %
-				(physnodeid, vmnodeid))
-			
 		#
 		# is this just a disk resize?
 		#
@@ -263,17 +235,11 @@ class Command(rocks.commands.HostArgumentProcessor, rocks.commands.set.command):
 			#
 			# get the ids of the VM disks
 			#
-			self.db.execute("""select vd.id from vm_disks vd,
-				vm_nodes vn, nodes n where vd.vm_node = vn.id
-				and vn.node = n.id and n.name = '%s' order
-				by id""" % host)
-				
-			diskid = []
-			for v, in self.db.fetchall():
-				diskid.append(v)
+			if len(disksize.split(' ')) > len(vm_node.disks):
+				self.abort('too many disksize vm has only '
+					'%d disks' % len(vm_node.disks))
 
-			i = 0
-			for ds in disksize.split(' '):
+			for index, ds in enumerate(disksize.split(' ')):
 				try:
 					dsize = int(ds)
 				except:
@@ -281,29 +247,24 @@ class Command(rocks.commands.HostArgumentProcessor, rocks.commands.set.command):
 					msg += 'integers'
 					self.abort(msg)
 
-				if dsize > 0: 
-					self.db.execute("""update vm_disks
-						set size = %d where
-						id = %s""" % (dsize, diskid[i]))
+				if dsize > 0:
+					vm_node.disks[index].size = dsize
 
-				i += 0
 		elif disk:
 			#
 			# first remove all disk entries
 			#
-			self.db.execute("""delete from vm_disks where
-				vm_node = %s""" % vmnodeid)
+			for d in vm_node.disks:
+				s.delete(d)
 
 			#
 			# then add them back
 			#
-			index = 0
+			ds = []
 			if disksize:
 				ds = disksize.split(' ')
-			else:
-				ds = []
 
-			for d in disk.split(' '):
+			for index, d in enumerate(disk.split(' ')):
 				if (len(ds) - 1) < index:
 					dsize = '36'
 				else:
@@ -314,30 +275,20 @@ class Command(rocks.commands.HostArgumentProcessor, rocks.commands.set.command):
 				#
 				dict = rocks.commands.add.host.vm.parseDisk(d)
 
-				self.db.execute("""insert into vm_disks (vm_node, vbd_type,
-					prefix, name, device, mode, size)
-					values (%s, '%s', '%s', '%s', '%s', '%s', %s)""" %
-					(vmnodeid, dict['vbd_type'], dict['prefix'],
-					dict['name'], dict['device'], dict['mode'], dsize))
+				disk = VmDisk(node=vm_node, size=dsize, **dict)
+				s.add(disk)
 
-				index += 1
 				
 		if mem:
-			rows = self.db.execute("""update vm_nodes set
-				mem = %d where id = %d""" %
-				(mem, vmnodeid))
+			vm_node.mem = mem
 
 		if slice:
-			rows = self.db.execute("""update vm_nodes set
-				slice = %s where id = %d""" %
-				(slice, vmnodeid))
+			vm_node.slice = slice
 
 		if virt_type and virt_type != 'None':
 			virt_type=virt_type.lower()
 			if virt_type == 'para' or virt_type == 'hvm':
-				rows = self.db.execute("""update vm_nodes set
-					virt_type = '%s' where id = %d""" %
-					(virt_type, vmnodeid))
+				vm_node.virt_type = virt_type
 			else:
 				self.abort("virt-type must be either 'hvm' or 'para'")	
 

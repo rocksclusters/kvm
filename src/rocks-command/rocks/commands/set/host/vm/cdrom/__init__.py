@@ -98,25 +98,12 @@ class Command(rocks.commands.HostArgumentProcessor, rocks.commands.set.command):
 			if not os.path.isabs(cdrom):
 				self.abort('You must use an absolute path for the ISO')
 
-		hosts = self.getHostnames(args)
-		if len(hosts) != 1:
+		nodes = self.newdb.getNodesfromNames(args, preload=['vm_defs'])
+		if len(nodes) != 1:
 			self.abort('must supply only one host')
-		host = hosts[0]
+		node = nodes[0]
 
-		#
-		# update the DB first
-		#
-		rows = self.db.execute("""select id from nodes where
-		        name = '%s'""" % (host))
-
-		if rows == 1:
-		        vmnodeid, = self.db.fetchone()
-		else:
-		        self.abort('could not get node id for VM %s' % host)
-
-		rows = self.db.execute("""update vm_nodes set cdrom_path = '%s' 
-				where node = %d""" % (cdrom, vmnodeid))
-
+		node.vm_defs.cdrom_path = cdrom
 		#TODO add code to attach cdrom to running instances
 
 

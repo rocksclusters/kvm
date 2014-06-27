@@ -129,84 +129,35 @@ class Command(rocks.commands.dump.host.command):
 	<related>add host vm</related>
 	"""
 
-	def dumpVM(self, host):
-		vmnodeid = None
-		mem = None
-		cpus = None
-		slice = None
-		macs = None
-		disks = None
-		physhost = None
-
-		#
-		# get the physical node that houses this VM
-		#
-		rows = self.db.execute("""select vn.physnode from
-			vm_nodes vn, nodes n where n.name = '%s'
-			and n.id = vn.node""" % (host))
-
-		if rows == 1:
-			physnodeid, = self.db.fetchone()
-		else:
-			#
-			# not a VM
-			#
-			return
-
-		rows = self.db.execute("""select name from nodes where
-			id = %s""" % (physnodeid))
-
-		if rows == 1:
-			physhost, = self.db.fetchone()
-		else:
-			self.abort('cannot find a physical node "%s" ' +
-				'for VM "%s"' % host)
-
-		#
-		# get the VM configuration parameters
-		#
-		rows = self.db.execute("""select vn.id, vn.mem,
-			vn.slice, vn.virt_type from nodes n, vm_nodes vn
-			where vn.node = n.id and n.name = '%s'""" %
-			host)
-
-		if rows != 1:
-			self.abort('cannot find a configuration data ' +
-				'for VM "%s"' % host)
-
-		vmnodeid, mem, slice, virt_type = self.db.fetchone()
-
+	def dumpVM(self, node):
 		disks = []
 		disksizes = []
-		rows = self.db.execute("""select vbd_type,
-			prefix, name, device, mode, size from
-			vm_disks where vm_node = %s""" %
-			vmnodeid)
+		for disk in node.vm_defs.disks:
 
-		if rows > 0:
-			for vbd_type, prefix, name, device, mode, size in \
-				self.db.fetchall():
-
-				file = os.path.join(prefix, name)
-
-				disk = '%s:%s,%s,%s' % (vbd_type, file,
-						device, mode)
-				disks.append(disk)
-				disksizes.append('%d' % size)
+			# TODO move this in rocks.db.mappings
+			file = os.path.join(disk.prefix, disk.name)
+			disk_str = '%s:%s,%s,%s' % (disk.vbd_type, file,
+					disk.device, disk.mode)
+			disks.append(disk_str)
+			disksizes.append('%d' % disk.size)
 
 		str = "set host vm %s physnode='%s' " % \
-			(self.dumpHostname(host), self.dumpHostname(physhost))
+			(self.dumpHostname(node.name), \
+			self.dumpHostname(node.vm_defs.physNode.name))
 		str += "disk='%s' disksize='%s' " % \
 			(' '.join(disks), ' '.join(disksizes))
 		str += "mem='%d' slice='%d' virt-type='%s'" % \
-			(mem, slice, virt_type)
+			(node.vm_defs.mem, node.vm_defs.slice, \
+			node.vm_defs.virt_type)
 
 		self.dump(str)
 
 
 	def run(self, params, args):
-		for host in self.getHostnames(args):
-			self.dumpVM(host)
+		for node in self.newdb.getNodesfromNames(args, \
+			preload=['vm_defs', 'vm_defs.disks']):
+			if node.vm_defs:
+				self.dumpVM(node)
 
 
 

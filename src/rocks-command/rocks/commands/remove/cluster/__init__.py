@@ -113,17 +113,17 @@ class Command(rocks.commands.HostArgumentProcessor,
 		if len(args) == 0:
 			self.abort('must supply at least one frontend name')
 
-		vm = rocks.vm.VM(self.db)
-		frontends = self.getHostnames( [ 'frontend' ])
-		hosts = self.getHostnames(args)
-		for host in hosts:
+		frontends = self.newdb.getNodesfromNames( [ 'frontend' ])
+
+		nodes = self.newdb.getNodesfromNames(args)
+		for host in nodes:
 			if host not in frontends:
 				self.abort('host %s is not a frontend' % host)
 			if not vm.isVM(host):
 				self.abort('host %s is not a virtual frontend'
 					% host)
 
-		for frontend in hosts:
+		for frontend in nodes:
 			#
 			# find all the client nodes related to this frontend.
 			#

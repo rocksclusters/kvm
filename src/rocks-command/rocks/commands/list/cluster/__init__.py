@@ -96,8 +96,9 @@
 # list physical and virtual clusters
 #
 
-import rocks.vmextended
 import rocks.commands
+import rocks.vmextended
+from rocks.db.vmextend import getStatus
 
 class Command(rocks.commands.HostArgumentProcessor,
 	rocks.commands.list.command):
@@ -130,72 +131,41 @@ class Command(rocks.commands.HostArgumentProcessor,
 		(showstatus, ) = self.fillParams( [ ('status', 'n') ])
 		showstatus = self.str2bool(showstatus)
 
-		frontends = self.getHostnames( [ 'frontend' ])
+		prel={'preload':['vm_defs', 'vm_defs.physNode']}
+
+		frontends = self.newdb.getNodesfromNames(['frontend'], **prel)
+		fenames = [i.name for i in frontends]
+		clusters = self.newdb.getVClusters()
 
 		if len(args) > 0:
-			hosts = self.getHostnames(args)
-			for host in hosts:
-				if host not in frontends:
-					self.abort('host %s is not a frontend'
-						% host)
-		else:
-			hosts = frontends
+			nodes = self.newdb.getNodesfromNames(args, **prel)
+			for node in nodes:
+				if node.name not in fenames:
+					self.abort('host %s is not a virtual'
+						' frontend' % node.name)
+			frontends = nodes
 
-		vm = rocks.vmextended.VMextended(self.db)
 		self.beginOutput()
+		for frontend in frontends:
 
-		for frontend in hosts:
-			#
-			# get the FQDN of the frontend
-			#
-			rows = self.db.execute("""select net.name from
-				nodes n, networks net, subnets s where 
-				s.name = 'public' and s.id = net.subnet
-				and n.name = '%s' and n.id = net.node"""
-				% (frontend))
-
-			if rows == 1:
-				fqdn, = self.db.fetchone()
-			else:
-				fqdn = frontend
-
-			if vm.isVM(frontend):
+			if frontend.vm_defs:
 				info = ('', 'VM')
 				if showstatus:
-					info += (vm.getStatus(frontend),)
+					info += (getStatus(frontend),)
 		
-				self.addOutput(fqdn, info)
+				self.addOutput(frontend.name, info)
+				# this returns a list of strings
+				clients = clusters.getNodes(frontend.name)
+				# now it is a list of Node
+				clients = self.newdb.getNodesfromNames(clients, **prel)
 
-				#
-				# all client nodes of this VM frontend have
-				# the same vlan id as this frontend
-				#
-				rows = self.db.execute("""select
-					net.vlanid from
-					networks net, nodes n, subnets s where
-					n.name = '%s' and net.node = n.id and
-					s.name = 'private' and
-					s.id = net.subnet""" % frontend)
+				for client in clients:
+					if client.vm_defs:
 
-				if rows > 0:
-					vlanid, = self.db.fetchone()
-				else:
-					self.abort('could not find Vlan Id ' +
-						'for frontend %s' % frontend)
-
-				rows = self.db.execute("""select n.name from
-					networks net, nodes n where
-					net.vlanid = %s and net.node = n.id
-					""" % vlanid)
-
-				for client, in self.db.fetchall():
-					if client != frontend and \
-						vm.isVM(client):
-
-						info = (client, 'VM')
+						info = (client.name, 'VM')
 
 						if showstatus:
-							info += (vm.getStatus(client),)
+							info += (getStatus(client),)
 		
 						self.addOutput('', info)
 			else:
@@ -203,28 +173,28 @@ class Command(rocks.commands.HostArgumentProcessor,
 				if showstatus:
 					info += (None,)
 		
-				self.addOutput(fqdn, info)
+				self.addOutput(frontend.name, info)
 
 				#
 				# a physical frontend. go get all the physical
 				# client nodes
 				#
-				clients = self.getHostnames()
+				nodes = self.newdb.getNodesfromNames(['compute'], 
+							preload=['vm_defs'])
 
-				for client in clients:
-					if client not in frontends and \
-						not vm.isVM(client):
-		
-						info = (client, 'physical')
-						if showstatus:
-							info += (None,)
+				for node in nodes:
+					if node.vm_defs:
+						info = (node.name, 'VM')
+					else:
+						info = (node.name, 'physical')
+					if showstatus:
+						info += (None,)
 
-						self.addOutput('', info)
+					self.addOutput('', info)
 
 		header = [ 'frontend', 'client nodes', 'type' ]
 		if showstatus:
 			header.append('status')
-
 		self.endOutput(header, trimOwner = 0)
 
 

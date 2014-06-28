@@ -93,6 +93,7 @@
 
 import rocks.vm
 import rocks.commands
+import rocks.db.vmextend
 
 class Command(rocks.commands.HostArgumentProcessor,
 	rocks.commands.remove.command):
@@ -113,112 +114,60 @@ class Command(rocks.commands.HostArgumentProcessor,
 		if len(args) == 0:
 			self.abort('must supply at least one frontend name')
 
-		frontends = self.newdb.getNodesfromNames( [ 'frontend' ])
+		clusters = self.newdb.getVClusters()
 
 		nodes = self.newdb.getNodesfromNames(args)
-		for host in nodes:
-			if host not in frontends:
-				self.abort('host %s is not a frontend' % host)
-			if not vm.isVM(host):
-				self.abort('host %s is not a virtual frontend'
-					% host)
+		for node in nodes:
+			if node.name not in clusters.getFrontends():
+				self.abort('host %s is not a virtual frontend' % node.name)
 
+		# the list of nodes we want to sync the network
+		restart_net_physNodes = set()
 		for frontend in nodes:
 			#
 			# find all the client nodes related to this frontend.
 			#
-			# all client nodes of this VM frontend have
-			# the same vlan ids as this frontend
-			#
-			rows = self.db.execute("""select net.vlanid, net.subnet
-				from networks net, nodes n where n.name = '%s'
-				and net.node = n.id and net.vlanid > 1""" %
-				frontend)
+			nodes_str = clusters.getNodes(frontend.name)
+			nodes = self.newdb.getNodesfromNames(nodes_str,
+				preload=["vm_defs", "vm_defs.physNode"])
 
-			vlans = []
-			for vlanid, subnet in self.db.fetchall():
-				vlans.append((vlanid, subnet))
+			# a set of tuple with (device, vlanid, physicalnode)
+			# to track the network interfaces we have to delete
+			delete_interfaces = set()
+			# a list of vmhost we haveh to delete
+			delete_vmhosts = []
 
-			if not vlans:
-				self.abort('could not find VLAN Id ' +
-					'for frontend %s' % frontend)
+			for node in nodes + [frontend]:
 
-			phys_nodes = []
-			vm_nodes = []
-			for vlanid, subnet in vlans:
-				self.db.execute("""select n.name from
-					networks net, nodes n where
-					net.vlanid = %s and net.node = n.id""" %
-					vlanid)
+				delete_vmhosts.append(node.name)
+				devs = self.newdb.getPhysTapDevicefromVnode(node)
+				physNode = node.vm_defs.physNode.name
+				for dev in devs:
+					# the set will delete duplicates
+					delete_interfaces.add((dev['device'],
+						dev["vlanID"], physNode))
 
-				for node, in self.db.fetchall():
-					if vm.isVM(node):
-						vm_nodes.append(
-							(node, vlanid, subnet))
-					else:
-						phys_nodes.append(
-							(node, vlanid, subnet))
+			for (device, vlanid, physNode) in delete_interfaces:
 
-			#
-			# remove the VLAN configuration from the physical nodes
-			#
-			pnodes = []
-			for node, vlanid, subnet in phys_nodes:
-				rows = self.db.execute("""select net.device from
-					nodes n, networks net where
-					n.name = '%s' and n.id = net.node and
-					net.vlanid = %s""" % (node, vlanid))
-
-				if rows != 1:
-					self.abort('could not find VLAN ' +
-						'%s for node %s' %
-						(vlanid, node))
-
-				iface, = self.db.fetchone()
-
+				print "Removing vlan", vlanid, " on host ",\
+						physNode
 				self.command('remove.host.interface',
-					[ node, iface ] )
+					[physNode, 'vlan%d' % vlanid])
+				restart_net_physNodes.add(physNode)
 
-				#
-				# remove the ifcfg file from the physical host
-				#
-				rows = self.db.execute("""select net.device from
-					nodes n, networks net where
-					n.name = '%s' and n.id = net.node and
-					net.subnet = %s and net.device not like
-					'vlan%%' """ % (node, subnet))
-
-				if rows != 1:
-					self.abort('could not find VLAN ' +
-						'%s for node %s' %
-						(vlanid, node))
-
-				device, = self.db.fetchone()
-				cmd = 'rm -f /etc/sysconfig/network-scripts/'
-				cmd += 'ifcfg-%s.%s' % (device, vlanid)
-
-				self.command('run.host', [ node, cmd ] )
-
-				pnodes.append(node)
-
-			#
-			# reconfigure and restart the network on the
-			# physical hosts
-			#
-			try:
-				self.command('sync.host.network', pnodes)
-			except:
-				pass
 
 			#
 			# remove all the VMs associated with the cluster
 			#
-			vnodes = []
-			for node, vlanid, subnet in vm_nodes:
-				vnodes.append(node)
+			print "Removing hosts: ", ' '.join(delete_vmhosts)
+			self.command('remove.host', delete_vmhosts)
 
-			self.command('remove.host', vnodes )
-
+		#
+		# reconfigure and restart the network on the
+		# physical hosts
+		#
+		print "Syncing configuration"
+		self.command('sync.host.network', list(restart_net_physNodes))
 		self.command('sync.config')
 
 

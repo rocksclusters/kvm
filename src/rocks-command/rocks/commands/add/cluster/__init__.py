@@ -200,6 +200,7 @@
 
 import os
 import rocks.commands
+from rocks.db.mappings.base import *
 
 class Command(rocks.commands.add.command):
 	"""
@@ -291,13 +292,11 @@ class Command(rocks.commands.add.command):
 		#
 		# make a list of the used vlan ids
 		#
-		self.db.execute("""select distinctrow vlanid from networks
-			order by vlanid""")
-
 		vlanids = []
-		for v, in self.db.fetchall():
-			if v:
-				vlanids.append(v)
+		for i, in self.newdb.conn.execute("select distinctrow"
+			" vlanid from networks order by vlanid"):
+			if i:
+				vlanids.append(i)
 
 		#
 		# find a free vlanid
@@ -315,29 +314,27 @@ class Command(rocks.commands.add.command):
 		#
 		# now get all the VM containers
 		#
-		self.db.execute("""select n.name from nodes n, memberships m
-			where n.membership = m.id and
-			m.name = 'VM Container' """)
+		res = self.newdb.getSession().query(Node.name).\
+			join(Membership).filter(
+			Membership.name == 'VM Container')
 			
-		for container, in self.db.fetchall():
+		for container, in res:
 			containers.append(container)
 
 		return containers
-
-
-	def getFrontend(self):
-		fqdn = os.uname()[1]
-		return fqdn.split('.')[0]
 
 
 	def addVlanToHost(self, host, vlan, subnet):
 		#
 		# configure the vlan on host 
 		#
-		self.db.execute("""SELECT net.vlanid FROM networks net,nodes n 
-			WHERE net.vlanid=%d 
-			AND net.node=n.id AND n.name='%s' """ %(vlan,host))
-		if self.db.fetchone() :
+		number = self.newdb.getSession().query(Network).join(Node).\
+			filter(
+			Network.device == 'vlan%d' % vlan,
+			Network.vlanID == vlan,
+			Node.name == host).count()
+			
+		if number > 0:
 				# interface already exists. That's OK
 				return
 		try:
@@ -348,7 +345,8 @@ class Command(rocks.commands.add.command):
 			self.abort ("could not add vlan %d \
 			(network=%s) for host %s\n" % (vlan, subnet,host))
 
-	def createFrontend(self, vlan, subnet, ip, disksize, gateway, virtType, FEName, FEContainer):
+	def createFrontend(self, vlan, subnet, ip, disksize, gateway, virtType,\
+				FEName, FEContainer):
 		
 		args = [ FEContainer, 'membership=Frontend', 'num-macs=2',
 			'disksize=%s' % disksize, 'vlan=%d,0' % vlan,
@@ -415,7 +413,7 @@ class Command(rocks.commands.add.command):
                 # VM's on the frontend
 
 		if containers == []:
-			containers.append(self.getFrontend())
+			containers.append(self.newdb.getFrontendName())
 
 		for i in range(0, computes):
 			host = containers[i % len(containers)]
@@ -501,7 +499,7 @@ class Command(rocks.commands.add.command):
 				('gateway', None),
 				('virt-type','hvm'),
 				('fe-name',None),
-				('fe-container',self.getFrontend()),
+				('fe-container',self.newdb.getFrontendName()),
 				('cluster-naming', 'n')
 				])
 

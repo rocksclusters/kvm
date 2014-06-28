@@ -135,13 +135,10 @@
 #
 
 import os.path
-import rocks.commands
-import rocks.vmextended
 
-import sys
-sys.path.append('/usr/lib64/python2.' + str(sys.version_info[1]) + '/site-packages')
-sys.path.append('/usr/lib/python2.' + str(sys.version_info[1]) + '/site-packages')
-import libvirt
+import rocks.commands
+import rocks.db.vmextend
+
 
 class Command(rocks.commands.list.host.command):
 	"""
@@ -177,8 +174,6 @@ class Command(rocks.commands.list.host.command):
 
 		showdisks = self.str2bool(showdisks)
 		showstatus = self.str2bool(showstatus)
-
-		vmlib = rocks.vmextended.VMextended(self.db)
 
 		self.beginOutput()
 
@@ -230,7 +225,7 @@ class Command(rocks.commands.list.host.command):
 			# spit it out!
 			info = (host.vm_defs.slice, host.vm_defs.mem, host.cpus, mac, physhost, virtType)
 			if showstatus:
-				info += (vmlib.getStatus(host.name, physhost),)
+				info += (rocks.db.vmextend.getStatus(host),)
 			if showdisks:
 				info += (disk, disksize, host.vm_defs.cdrom_path)
 

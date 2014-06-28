@@ -14,6 +14,11 @@ rocks.db.helper.DatabaseHelper
 
 import rocks.db.helper
 import sqlalchemy.orm
+import sys
+sys.path.append('/usr/lib64/python2.' + str(sys.version_info[1]) + '/site-packages')
+sys.path.append('/usr/lib/python2.' + str(sys.version_info[1]) + '/site-packages')
+import libvirt
+
 from rocks.db.mappings.base import *
 
 def getPhysTapDevicefromVnode(self, node):
@@ -98,9 +103,100 @@ def getPhysBridgedDevicefromVnode(self, node):
 
 	return retval
 
+def getVClusters(self):
+	""" """
+
+	ret = VClusters()
+
+	query = text("select cluster_name, vlanid, node_name from clusters")
+
+	for (fe, id, node) in self.conn.execute(query):
+		if fe not in ret.nodes:
+			ret.nodes[fe] = [node]
+		else:
+			ret.nodes[fe].append(node)
+		ret.vlans[fe] = id
+
+	return ret
+
+
+
 
 # Adding this methods to the DatabaseHelper class so they will be available
 # to all the python package that will load this package
 rocks.db.helper.DatabaseHelper.getPhysBridgedDevicefromVnode = getPhysBridgedDevicefromVnode
 rocks.db.helper.DatabaseHelper.getPhysTapDevicefromVnode = getPhysTapDevicefromVnode
+rocks.db.helper.DatabaseHelper.getVClusters = getVClusters
 
+
+class VClusters:
+	"""Container class use by"""
+
+	def __init__(self):
+		self.nodes={}
+		self.vlans={}
+
+	def getFrontends(self):
+		"""return a list of virtual cluster frontends"""
+		return self.nodes.keys()
+
+	def getNodes(self, fename):
+		"""return a list of nodes belonging to this cluster"""
+		return self.nodes[fename]
+
+	def getVlan(self, fename):
+		"""return the vlanid used by this cluster"""
+		return self.vlans[fename]
+
+
+
+
+def getStatus(node):
+	"""given a node (of type Node) it returns its status as a string"""
+
+	if not (node.vm_defs and node.vm_defs.physNode):
+		return 'nostate-error'
+
+	physhost = node.vm_defs.physNode.name
+
+	try:
+		import rocks.vmconstant
+		hipervisor = libvirt.open(rocks.vmconstant.connectionURL % physhost)
+	except libvirt.libvirtError:
+		#import traceback
+		#traceback.print_exc()
+		return 'nostate-error'
+
+	found = 0
+	for id in hipervisor.listDomainsID():
+		if id == 0:
+			#
+			# skip dom0
+			#
+			continue
+
+		domU = hipervisor.lookupByID(id)
+		if domU.name() == node.name:
+			found = 1
+			break
+
+	state = 'nostate'
+
+	if found:
+		status = domU.info()[0]
+
+		if status == libvirt.VIR_DOMAIN_NOSTATE:
+			state = 'nostate'
+		elif status == libvirt.VIR_DOMAIN_RUNNING or \
+				status == libvirt.VIR_DOMAIN_BLOCKED:
+			state = 'active'
+		elif status == libvirt.VIR_DOMAIN_PAUSED:
+			state = 'paused'
+		elif status == libvirt.VIR_DOMAIN_SHUTDOWN:
+			state = 'shutdown'
+		elif status == libvirt.VIR_DOMAIN_SHUTOFF:
+			state = 'shutoff'
+		elif status == libvirt.VIR_DOMAIN_CRASHED:
+			state = 'crashed'
+
+	return state

@@ -54,6 +54,8 @@
 # @Copyright@
 #
 
+
+REDHAT.ROOT     = $(PWD)/../../
 PKGROOT		= /opt/rocks
 -include $(ROCKSROOT)/etc/Rules.mk
 include Rules.mk
@@ -63,16 +65,6 @@ include Rules.mk
 # which just does a big mess in compiling all the python files
 MAKE.rpmflag	= -bb --define "__spec_install_post :"
 
-# If MICRO_VERSION isn't defined, then force it to zero
-ifndef VERSION.MICRO
-	VERSION.MICRO = 0
-endif 
-
-# we need this variable inside setup.py to set the 
-# version of the python egg
-myenv = ROCKS_VERSION=$(ROCKS_VERSION) 
-
-#DISTRIBUTE_DISABLE_VERSIONED_EASY_INSTALL_SCRIPT=1;
 
 # if ROOT is not defined assign / so that 
 # python setup.py install --root=$(ROOT)
@@ -80,9 +72,10 @@ myenv = ROCKS_VERSION=$(ROCKS_VERSION)
 # will bail on you
 ROOT ?= /
 
-build:: rocks-copyright.txt
-	
-install:: build
+
+build:
+
+install::
 	find rocks | sed -e 's/\//./g' -e '/\.py/d' > packages
 	$(PY.PATH) setup.py install --root=$(ROOT)
 

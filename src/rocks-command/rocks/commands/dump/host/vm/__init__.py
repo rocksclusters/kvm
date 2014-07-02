@@ -141,9 +141,10 @@ class Command(rocks.commands.dump.host.command):
 			disks.append(disk_str)
 			disksizes.append('%d' % disk.size)
 
-		str = "set host vm %s physnode='%s' " % \
-			(self.dumpHostname(node.name), \
-			self.dumpHostname(node.vm_defs.physNode.name))
+		str = "set host vm %s " % self.dumpHostname(node.name)
+		if node.vm_defs.physNode:
+			str += "physnode='%s' " % \
+				self.dumpHostname(node.vm_defs.physNode.name)
 		str += "disk='%s' disksize='%s' " % \
 			(' '.join(disks), ' '.join(disksizes))
 		str += "mem='%d' slice='%d' virt-type='%s'" % \

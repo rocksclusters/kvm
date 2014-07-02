@@ -185,11 +185,13 @@ class Command(rocks.commands.list.host.command):
 		for host in self.newdb.getNodesfromNames(args, 
 				preload=['vm_defs', 'networks', 'vm_defs.disks']):
 
-			if not host.vm_defs :
+			if not host.vm_defs:
 				continue
 
 			# get the physical node that houses this VM
-			physhost = host.vm_defs.physNode.name
+			physhost = 'None'
+			if host.vm_defs.physNode:
+				physhost = host.vm_defs.physNode.name
 
 			# get networks
 			macs = [net.mac for net in host.networks]

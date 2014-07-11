@@ -209,9 +209,8 @@ class Command(rocks.commands.report.host.command):
                 cpu_match = self.newdb.getHostAttr(node, 'cpu_match')
                 if cpu_mode :
                         xmlconfig.append("  <cpu mode='" +
-				rocks.util.unescapeAttr(cpu_mode) + "'/>")
+				cpu_mode + "'/>")
                 elif cpu_match :
-			cpu_match = rocks.util.unescapeAttr(cpu_match)
                         cpu_match_split = cpu_match.split(':', 1)
                         xmlconfig.append("  <cpu mode='" + cpu_match_split[0] + "'>")
                         if len(cpu_match_split) > 1 :
@@ -226,14 +225,14 @@ class Command(rocks.commands.report.host.command):
 			        xmlconfig.append("    <vcpupin vcpu=\"%d\" cpuset=\"%d\"/>" % (i, i))
 			xmlconfig.append("  </cputune>")
 		elif attribute:
-			xmlconfig.append(rocks.util.unescapeAttr(attribute))
+			xmlconfig.append(attribute)
 
 		if node.vm_defs.virt_type == 'hvm':
 			features = self.newdb.getHostAttr(node,'HVM_Features')
 			if features is None :
 				features = """    <acpi/>\n    <apic/>\n    <pae/>"""
 			xmlconfig.append("  <features>")
-			xmlconfig.append(rocks.util.unescapeAttr(features))
+			xmlconfig.append(features)
 			xmlconfig.append("  </features>")
 		return xmlconfig
 
@@ -359,7 +358,7 @@ class Command(rocks.commands.report.host.command):
 			attribute = self.newdb.getHostAttr(node, 'kvm_device_%d' % i)
 			i = i + 1
 			if attribute :
-				devicexml.append(rocks.util.unescapeAttr(attribute))
+				devicexml.append(attribute)
 			else:
 				break
 

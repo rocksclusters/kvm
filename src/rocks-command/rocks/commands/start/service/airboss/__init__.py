@@ -1,4 +1,4 @@
-# $Id: __init__.py,v 1.5 2012/11/27 00:49:11 phil Exp $
+#!/opt/rocks/bin/python
 #
 # @Copyright@
 # 
@@ -54,117 +54,26 @@
 # 
 # @Copyright@
 #
-# $Log: __init__.py,v $
-# Revision 1.5  2012/11/27 00:49:11  phil
-# Copyright Storm for Emerald Boa
-#
-# Revision 1.4  2012/05/09 16:48:37  clem
-# ported to rocks 5.5
-#
-# Revision 1.3  2012/05/06 05:49:18  phil
-# Copyright Storm for Mamba
-#
-# Revision 1.2  2012/04/10 19:02:00  clem
-# deprecated import sha removed
-#
-# Revision 1.1  2012/03/17 02:52:31  clem
-# I needed to commit all this code! First version of the rocks command for kvm.
-# Soon all the other code
-#
-# Revision 1.7  2011/08/16 15:05:13  anoop
-# Bug fix.
-# - Airboss service couldn't connect to the database
-#   because it would fail to parse the password line in my.cnf
-#   file correctly.
-# - OperationalError needs to be scoped to the MySQLdb class. It
-#   isn't available in the global context.
-#
-# Revision 1.6  2011/07/23 02:31:46  phil
-# Viper Copyright
-#
-# Revision 1.5  2010/10/19 19:09:58  bruno
-# a VM may not have a VLAN id associated with it (e.g., it may be controlled
-# by a physical frontend). in that case, don't check the vlanid field. thanks
-# to phil for identifying this bug.
-#
-# Revision 1.4  2010/09/07 23:53:33  bruno
-# star power for gb
-#
-# Revision 1.3  2010/08/05 22:22:32  bruno
-# optionally get the status of the VMs
-#
-# Revision 1.2  2010/08/05 20:06:29  bruno
-# more airboss naming
-#
-# Revision 1.1  2010/08/04 23:37:44  bruno
-# in with the airboss, out with the vm controller
-#
-# Revision 1.15  2010/08/03 23:57:28  bruno
-# tweaks
-#
-# Revision 1.14  2010/07/29 21:28:44  bruno
-# make sure to cleanup completed children
-#
-# Revision 1.13  2010/07/14 19:44:43  bruno
-# open a new connection to the database on each received command. this prevents
-# the case where the connect can become 'stale'.
-#
-# Revision 1.12  2010/07/07 23:18:39  bruno
-# added 'power on + install' command
-#
-# Revision 1.11  2010/06/30 19:51:22  bruno
-# fixes
-#
-# Revision 1.10  2010/06/30 17:59:58  bruno
-# can now route error messages back to the terminal that issued the command.
-#
-# can optionally set the VNC viewer flags.
-#
-# Revision 1.9  2010/06/29 00:25:41  bruno
-# a little code restructuring and now the console can handle reboots
-#
-# Revision 1.8  2010/06/25 20:29:20  bruno
-# don't send a space character at the end of a console session
-#
-# Revision 1.7  2010/06/25 19:36:16  bruno
-# tweaks
-#
-# Revision 1.6  2010/06/25 19:09:06  bruno
-# tweak
-#
-# Revision 1.5  2010/06/24 23:43:51  bruno
-# use libvirt to determine the VNC port number for a VM client
-#
-# Revision 1.4  2010/06/23 22:23:37  bruno
-# fixes
-#
-# Revision 1.3  2010/06/22 21:41:14  bruno
-# basic control of VMs from within a VM
-#
-# Revision 1.2  2010/06/21 22:47:06  bruno
-# use new ssl python library
-#
-# Revision 1.1  2010/06/15 19:38:45  bruno
-# start/stop the vmcontrol service
-#
-#
 
 import socket
 import ssl
 import M2Crypto
 import M2Crypto.BIO
+import logging
 import os
 import sys
-import MySQLdb
-import subprocess
 import select
-import rocks.vm
-import rocks.vmextended
-import rocks.commands
+import threading
 import xml.sax.handler
-import subprocess
-import shlex
-import time
+import daemon.runner
+
+import SocketServer
+
+
+import rocks.db.vmextend
+import rocks.commands
+import rocks.commands.start.service
+
 
 sys.path.append('/usr/lib64/python2.' + str(sys.version_info[1]) + '/site-packages')
 sys.path.append('/usr/lib/python2.' + str(sys.version_info[1]) + '/site-packages')
@@ -174,6 +83,9 @@ import libvirt
 # 'V' 'M' -- 86, 77 is decimal representation of 'V' 'M' in ASCII
 #
 port = 8677
+
+logfile = "/var/log/airboss.log"
+logger = logging.getLogger("Airboss")
 
 #
 # this class is used to get the VNC port number of a VM's console
@@ -199,105 +111,113 @@ class Command(rocks.commands.start.service.command):
 	</param>
 	"""
 
-	def Abort(self, msg):
-		print 'abort: msg: ', msg
-		sys.stdout.flush()
+	def run(self, params, args):
+		foreground, = self.fillParams([ ('foreground', 'n') ])
+		foreground = self.str2bool(foreground)
+
+		app = Airboss()
+		AirbossTCPHandler.command = self
+		formatter = logging.Formatter(
+			"%(asctime)s - %(levelname)s - %(message)s")
+		logger.setLevel(logging.DEBUG)
+
+		if foreground:
+			# just run the app no need for daemonization
+			ch = logging.StreamHandler(sys.stdout)
+			ch.setLevel(logging.DEBUG)
+			ch.setFormatter(formatter)
+			logger.addHandler(ch)
+			app.run()
+		else:
+			# redirecting the logger to the logfile
+			handler = logging.FileHandler(logfile)
+			handler.setLevel(logging.INFO)
+			handler.setFormatter(formatter)
+			logger.addHandler(handler)
+			# redirection stdout and err to the logger
+			# in case we get a stack trace
+			daemon_runner = MydaemonRunnner(app)
+			# This ensures that the logger file handle does not 
+			# get closed during daemonization
+			daemon_runner.daemon_context.files_preserve = \
+							[handler.stream]
+			# we don't need the runnner to parse input line
+			# since we already did it
+			daemon_runner._start()
 		
 
-	def reconnect(self):
-		#
-		# reconnect to the database
-		#
+class MydaemonRunnner(daemon.runner.DaemonRunner):
+	"""we need to subclass the (stupid) DaemonRunner so that it does
+	wipe the stdout and stderr everytimes it re-start"""
 
-		# First try to read the cluster password (for apache)
 
-		passwd = ''
+	def __init__(self, app):
+		""" Set up the parameters of a new runner.
 
-		try:
-			file = open('/opt/rocks/etc/my.cnf','r')
-			for line in file.readlines():
-				l = line[:-1].split('=')
-				if len(l) > 1 and l[0].strip() == "password":
-					passwd = l[1].strip()
-					break
-			file.close()
-		except:
-			pass
+		The `app` argument must have the following attributes:
 
-		try:
-			host = rocks.DatabaseHost
-		except:
-			host = 'localhost'
+		* `stdin_path`, `stdout_path`, `stderr_path`: Filesystem
+		  paths to open and replace the existing `sys.stdin`,
+		  `sys.stdout`, `sys.stderr`.
 
-		# Now make the connection to the DB
+		* `pidfile_path`: Absolute filesystem path to a file that
+		  will be used as the PID file for the daemon. If
+		  ``None``, no PID file will be used.
 
-		try:
-			if os.geteuid() == 0:
-				username = 'apache'
-			else:
-				username = pwd.getpwuid(os.geteuid())[0]
+		* `pidfile_timeout`: Used as the default acquisition
+		  timeout value supplied to the runner's PID lock file.
 
-			# Connect over UNIX socket if it exists, otherwise go
-			# over the network.
+		* `run`: Callable that will be invoked when the daemon is
+		  started.
+		    cut and past from python libs
+		"""
+		self.parse_args()
+		self.app = app
+		self.daemon_context = daemon.daemon.DaemonContext()
+		self.daemon_context.stdin = open(app.stdin_path, 'r')
+		self.daemon_context.stdout = open(app.stdout_path, 'a+')
+		self.daemon_context.stderr = open(
+		    app.stderr_path, 'a+', buffering=0)
 
-			if os.path.exists('/var/opt/rocks/mysql/mysql.sock'):
-				Database = MySQLdb.connect(db='cluster',
-					host='localhost',
-					user=username,
-					passwd='%s' % passwd,
-					unix_socket='/var/opt/rocks/mysql/mysql.sock')
-			else:
-				Database = MySQLdb.connect(db='cluster',
-					host='%s' % host,
-					user=username,
-					passwd='%s' % passwd,
-					port=40000)
+		self.pidfile = None
+		if app.pidfile_path is not None:
+		    self.pidfile = daemon.runner.make_pidlockfile(
+		        app.pidfile_path, app.pidfile_timeout)
+		self.daemon_context.pidfile = self.pidfile
 
-		except ImportError:
-			Database = None
-		except MySQLdb.OperationalError:
-			Database = None
+
+
+class AirbossTCPHandler(SocketServer.BaseRequestHandler):
+	"""
+	The RequestHandler class for Airboss.
 	
-		return (Database)
+	It is instantiated once per connection by the server, and handle
+	is called thereafter.
 
+	Most of the method have been copyed from the old Command class
+	now they could use instance variable to store state.
+	"""
 
-	def get_fename(self, host_name):
+	# hold a reference to the rocks.commands.Command class
+	command = None
+
+	def get_fename(self, node):
 		#
 		# return the frontend name associated with this 
 		# host_name
 		#
-		fe_name = ''
-
-		try:
-			host = self.db.getHostname(host_name)
-		except:
-			host = None
-		
-		if not host:
-			return fe_name
-
-		vm = rocks.vm.VM(self.db)
-		if vm.isVM(host):
+		if node.vm_defs:
 			#
 			# get the cluster name
 			#
-			rows = self.db.execute("""select cluster_name 
-				from clusters cl, nodes n, networks net 
-				where n.name = '%s' and n.id = net.node 
-				and cl.vlanid = net.vlanid"""  % host)
+			self.clusters = self.command.newdb.getVClusters()
+			for fe_name in self.clusters.getFrontends():
+				if node.name == fe_name or \
+					node.name in self.clusters.getNodes(fe_name):
+					return fe_name
+			logger.debug('Unable to find %s in vclusters' % node.name)
 
-			if rows == 0:
-				#
-				# this is a virtual node belonging to the physical
-				# frontend, or it's a really bad error!!
-				#
-				print "airbos does not support turning on and off "\
-					"nodes which belongs to the physical frontend"
-
-			elif rows > 0:
-				fe_name, = self.db.fetchone()
-
-		return fe_name
+		return None
 
 
 	def getVNCport(self, client, physnode):
@@ -329,12 +249,11 @@ class Command(rocks.commands.start.service.command):
 		#
 		vncport = self.getVNCport(client, physnode)
 		if not vncport:
-			print 'could not get VNC port for %s' % client
-			sys.stdout.flush()
+			logger.error('could not get VNC port for %s' % client)
 			return None
 
-		print '\tconnecting console on physical host %s port %s' % \
-			(physnode, vncport)
+		logger.debug('connecting console on physical host %s port %s' % \
+			(physnode, vncport))
 
 		pid = os.fork()
 		if pid == 0:
@@ -363,24 +282,18 @@ class Command(rocks.commands.start.service.command):
 		return fds[0].fileno()
 
 
-	def console(self, s, clientfd, dst_mac):
-		client = self.db.getHostname(dst_mac)
-		if not client:
-			self.sendresponse(s, -1,
-				'MAC address %s not in database' % dst_mac)
-			return
+	def console(self, s, clientfd, node):
 
-		vm = rocks.vmextended.VMextended(self.db)
-		(physnodeid, physnode) = vm.getPhysNode(client)
-
-		if not physnode:
+		if not node.vm_defs or not node.vm_defs.physNode:
 			msg = 'could not find the physical host that controls'
 			msg += ' the VM for MAC address %s' % dst_mac
 			self.sendresponse(s, -1, msg)
 			return
 
+		physnode = node.vm_defs.physNode.name
+
 		fds = socket.socketpair()
-		fd = self.openTunnel(client, physnode, fds)
+		fd = self.openTunnel(node.name, physnode, fds)
 		if not fd:
 			msg = 'could not open a ssh tunnel to the physical '
 			msg += 'host %s' % physnode
@@ -438,38 +351,24 @@ class Command(rocks.commands.start.service.command):
 
 		return
 
-	def cdrom(self, socket, dst_mac, op):
+	def cdrom(self, socket, node, op):
 		"""invoke the rocks set host vm cdrom"""
-
-		client = self.db.getHostname(dst_mac)
-
 		ops = op.split(' ')
 
 		if len(ops) == 1:
-			cmd = """/opt/rocks/bin/rocks set host vm cdrom %s cdrom='none'"""\
-					% client
+			filename = 'none'
 		elif len(ops) == 2:
 			filename = ops[1]
 			# TODO do more checking on the cdrom file name
 			if '..' in filename:
 				self.sendresponse(socket, -1, "invalid path")
 				return
-
-			cmd = """/opt/rocks/bin/rocks set host vm cdrom %s cdrom='%s'"""\
-                                        % (client, filename)
 		elif len(ops) > 2:
 			self.sendresponse(socket, -1, "invalid path")
 			return
 
-		p = subprocess.Popen(shlex.split(cmd),
-			stdin = subprocess.PIPE,
-			stdout = subprocess.PIPE,
-			stderr = subprocess.STDOUT)
-		p.wait()
-
-		response = ''
-		for line in p.stdout.readlines():
-			response += line
+		response = self.command.command('set.host.vm.cdrom', 
+				[node.name, 'cdrom=%s' % filename])
 
 		status = 0
 		if len(response) > 0:
@@ -478,18 +377,15 @@ class Command(rocks.commands.start.service.command):
 		self.sendresponse(socket, status, response)
 
 
-	def power(self, s, action, dst_mac):
-		cmd = '/opt/rocks/bin/rocks %s host vm %s' % (action, dst_mac)
+	def power(self, s, action, node_name):
 
-		p = subprocess.Popen(shlex.split(cmd),
-			stdin = subprocess.PIPE,
-			stdout = subprocess.PIPE,
-			stderr = subprocess.STDOUT)
-		p.wait()
+		try:
+			response = self.command.command(action + '.host.vm', \
+						[node_name])
 
-		response = ''
-		for line in p.stdout.readlines():
-			response += line
+		except rocks.util.CommandError, e:
+			self.sendresponse(s, -1, str(e))
+			return
 
 		status = 0
 		if len(response) > 0:
@@ -515,7 +411,7 @@ class Command(rocks.commands.start.service.command):
 		#
 		# get the keys for this fe_name
 		#
-		rows = self.db.execute("""select pk.public_key
+		rows = self.command.db.execute("""select pk.public_key
 				from public_keys pk, nodes n
 				where pk.node = n.id and
 				n.name = '%s'""" % fe_name)
@@ -524,7 +420,8 @@ class Command(rocks.commands.start.service.command):
 			#
 			# no keys were found
 			#
-			return 0
+			logger.debug('no keys found for %s' % fe_name)
+			return False
 
 		try:
 			import hashlib
@@ -533,65 +430,21 @@ class Command(rocks.commands.start.service.command):
 			import sha
 			digest = sha.sha(clear_text).digest()
 
-		for public_key, in self.db.fetchall():
+		for public_key, in self.command.db.fetchall():
 			bio = M2Crypto.BIO.MemoryBuffer(public_key)
 			key = M2Crypto.RSA.load_pub_key_bio(bio)
 
 			try:
 				verify = key.verify(digest, signature)
 				if verify == 1:
-					return 1
-			except:
+					return True
+			except Exception, e:
+				logger.debug('host %s key %s failed (%s)' % 
+						(fe_name, public_key, str(e)))
 				pass
 
-		return 0
+		return False
 
-
-	def daemonize(self):
-		#
-		# The python Daemon dance. From Steven's "Advanced Programming
-		# in the UNIX env".
-		#
-		pid = os.fork()
-		if pid > 0:
-			sys.exit(0)
-
-		#
-		# now decouple from parent environment
-		#
-
-		#
-		# So we can remove/unmount the dir the daemon started in.
-		#
-		os.chdir("/")
-
-		#
-		# Create a new session and set the process group.
-		#
-		os.setsid()
-		os.umask(0)
-
-		#
-		# do a second fork
-		#
-		pid = os.fork()
-		if pid > 0:
-			#
-			# exit from second parent
-			#
-			sys.exit(0)
-
-		#
-		# redirect standard file descriptors
-		#
-		sys.stdout.flush()
-		sys.stderr.flush()
-		si = file('/dev/null', 'r')
-		so = file('/var/log/airboss.log', 'a+')
-		se = so
-		os.dup2(si.fileno(), sys.stdin.fileno())
-		os.dup2(so.fileno(), sys.stdout.fileno())
-		os.dup2(se.fileno(), sys.stderr.fileno())
 
 
 	def sendresponse(self, s, status, response):
@@ -603,62 +456,46 @@ class Command(rocks.commands.start.service.command):
 		#
 		msglen = '%08d\n' % len(msg)
 
-		bytes = 0
-		while bytes != len(msglen):
-			bytes += s.write(msglen[bytes:])
+		s.sendall(msglen)
 
 		#
 		# now send the contents of the message
 		#
-		bytes = 0
-		while bytes != len(msg):
-			bytes += s.write(msg[bytes:])
-
+		s.sendall(msg)
 
 
 	def listmacs(self, s, fe_name, status):
+		"""send a listmacs response"""
 
+		node_names = self.clusters.getNodes(fe_name) + [fe_name]
+		vlan = self.clusters.getVlan(fe_name)
 
 		resp = ''
-		self.db.execute("""select n.name, net.mac, ali.name as alias
-				from clusters cl, networks net, vm_nodes vmn, nodes n
-				left join aliases ali on n.id = ali.node
-				where n.id = net.node and n.id = vmn.node
-				and net.vlanid = cl.vlanid
-				and cl.cluster_name = '%s'""" % fe_name)
+		for node in self.command.newdb.getNodesfromNames(node_names, 
+				preload=['networks', 'aliases', 'vm_defs']):
 
-		aliases = {}
-		macs = {}
+			for net in node.networks:
+				if net.vlanID == vlan:
+					resp += net.mac + ' '
 
-
-		for (name, mac, alias) in self.db.fetchall():
-			macs[name] = mac
-			if alias:
-				if name in aliases:
-					aliases[name].append(alias)
-				else:
-					aliases[name] = [alias]
-
-		if status:
-			vm = rocks.vmextended.VMextended(self.db)
-
-		for name in sorted(macs.keys()):
-			resp += macs[name] + ' '
 			if status:
-				state = 'nostate'
-				resp += vm.getStatus(name) + ' '
+				resp += rocks.db.vmextend.getStatus(node) + ' '
 
-			resp += name
-			if name in aliases:
-				resp += ',' + ','.join(aliases[name])
+			resp += node.name
+			for alias in node.aliases:
+				resp += ',' + alias.name
 
 			resp += '\n'
 
 		self.sendresponse(s, 0, resp)
 
 
-	def dorequest(self, conn):
-		s = ssl.wrap_socket(conn,
+
+	def handle(self):
+		# self.request is the TCP socket connected to the client
+		logger.debug('received connection from: ' + str(self.client_address))
+
+		s = ssl.wrap_socket(self.request,
 			server_side = True,
 			keyfile = '/etc/pki/libvirt/private/serverkey.pem',
 			certfile = '/etc/pki/libvirt/servercert.pem',
@@ -675,7 +512,6 @@ class Command(rocks.commands.start.service.command):
 			clear_text_len = int(buf)
 		except:
 			s.close()
-			conn.close()
 			return
 
 		#
@@ -688,9 +524,8 @@ class Command(rocks.commands.start.service.command):
 
 		(op, dst_mac) = self.parse_msg(clear_text) 
 
-		print '\top:\t\t%s' % op
-		print '\tdst_mac:\t%s' % dst_mac
-		sys.stdout.flush()
+		logger.debug('op:\t\t%s' % op)
+		logger.debug('dst_mac:\t%s' % dst_mac)
 
 		#
 		# get the digital signature
@@ -703,7 +538,6 @@ class Command(rocks.commands.start.service.command):
 			signature_len = int(buf)
 		except:
 			s.close()
-			conn.close()
 			return
 
 		signature = ''
@@ -711,121 +545,95 @@ class Command(rocks.commands.start.service.command):
 			msg = s.read(signature_len - len(signature))
 			signature += msg
 
+
+		# get the node from the DB
+		try:
+			node = self.command.newdb.getNodesfromNames([dst_mac], 
+				preload=['vm_defs', 'networks', 'public_keys'])[0]
+		except Exception, e:
+			logger.error('host %s not found (%s)', dst_mac, str(e))
+			s.close()
+			return
+
 		#
 		# check the signature
 		#
-		fe_name = self.get_fename(dst_mac)
-
-		if fe_name == '':
+		fe_name = self.get_fename(node)
+		if not fe_name:
 			self.sendresponse(s, -1,
-				'host %s not in database' % dst_mac)
+				'host %s is not part of a virtaul cluster' % 
+						dst_mac)
 			s.close()
-			conn.close()
 			return
 
 		if self.check_signature(clear_text, signature, fe_name):
-			print '\tmessage signature is valid'
-			sys.stdout.flush()
+			logger.info('valid op: ' + op + ' from: ' + \
+					str(self.client_address))
 
 			if op == 'power off':
-				self.power(s, 'stop', dst_mac)
+				self.power(s, 'stop', node.name)
 			elif op == 'power on':
-				self.power(s, 'start', dst_mac)
+				self.power(s, 'start', node.name)
 			elif op == 'power on + install':
-				self.command('set.host.boot', [ dst_mac,
+				self.command.command('set.host.boot', [ node.name,
 					'action=install'])
-				self.power(s, 'start', dst_mac)
+				self.power(s, 'start', node.name)
 			elif op == 'list macs + status':
 				self.listmacs(s, fe_name, 1)
 			elif op == 'list macs':
 				self.listmacs(s, fe_name, 0)
 			elif op == 'console':
-				self.console(s, conn.fileno(), dst_mac)
+				self.console(s, self.request.fileno(), node)
 			elif op.startswith('cdrom'):
-				self.cdrom(s, dst_mac, op)
+				self.cdrom(s, node, op)
 			else:
-				print '\tcommand is invalid'
-				sys.stdout.flush()
+				logger.error('command is invalid')
 				self.sendresponse(s, -1, 'command is invalid')
 		else:
-			print '\tmessage signature is invalid'
-			sys.stdout.flush()
+			logger.info('invalid op: '+ op + ' from: ' + \
+					str(self.client_address))
 
 			self.sendresponse(s, -1, 'message signature is invalid')
 		try:
 			s.shutdown(socket.SHUT_RDWR)
-			conn.shutdown(socket.SHUT_RDWR)
 		except:
 			pass
 
 		s.close()
-		conn.close()
+		self.command.newdb.closeSession()
 
 
-	def cleanupchildren(self):
-		done = 0
-		while not done:
-			try:
-				(pid, status) = os.waitpid(0, os.WNOHANG)
-				if pid == 0:
-					done = 1
-			except:
-				done = 1
+
+class Airboss():
+	"""this class is used by the daemon.runner.DaemonRunner
+	to create a proper unix daemon"""
+
+	def __init__(self):
+		self.stdin_path = '/dev/null'
+		self.stdout_path = logfile
+		self.stderr_path = logfile
+		self.pidfile_path =  '/var/run/airboss.pid'
+		self.pidfile_timeout = 5
+		self.server = None
 
 
-	def run(self, params, args):
-		foreground, = self.fillParams([ ('foreground', 'n') ])
+	def run(self):
+		"""run method of the daemon"""
 
-		if not self.str2bool(foreground):
-			self.daemonize()
+		host = ""
+		logger.info('airboss daemon starting')
+		AirbossTCPHandler.command.newdb.reconnect()
+		#self.server = SocketServer.ThreadingTCPServer((host, port), AirbossTCPHandler)
+		self.server = SocketServer.TCPServer((host, port), AirbossTCPHandler)
+		self.server.allow_reuse_address = True
+		self.server.serve_forever()
+		logger.info('airboss daemon terminated abnormally')
 
-		sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-		sock.setblocking(0)
-		sock.bind(('', port))
-		sock.listen(1)
 
-		print 'airboss started at %s\n' % time.asctime()
-		sys.stdout.flush()
-
-		done = 0
-		while not done:
-			conn = None
-			while not conn:
-				try:
-					conn, addr = sock.accept()
-				except:
-					self.cleanupchildren()
-					time.sleep(0.1)
-
-			print 'received message from: ', addr
-			sys.stdout.flush()
-
-			#
-			# for a child process to handle the request
-			#
-			pid = os.fork()
-			if pid == 0:
-				#
-				# after this program becomes a daemon, we need
-				# to get a new connect to the database. that
-				# is because the parent closes the initial
-				# database connection
-				#
-				database = self.reconnect()
-
-				if not database:
-					print "couldn't connect to the " + \
-						"database"
-					sys.stdout.flush()
-				else:
-					self.db.database = database
-					self.db.link = database.cursor()
-					self.dorequest(conn)
-					database.close()
-
-				os._exit(0)
-			else:
-				conn.close()
+	def stop(self):
+		"""called when the daemon is stopped"""
+		if self.server:
+			self.server.shutdown()
 
 
 RollName = "kvm"

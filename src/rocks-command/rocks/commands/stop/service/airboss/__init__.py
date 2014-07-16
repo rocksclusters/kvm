@@ -76,38 +76,23 @@
 #
 #
 
+
 import rocks.commands
-import os
-import re
+import rocks.commands.start.service.airboss
 
 class Command(rocks.commands.stop.service.command):
 	"""
 	Stop the airboss service.
 	"""
 
-	def find_service(self, line):
-		l = line.split('\0')
-
-		if len(l) > 5 and l[0] == '/opt/rocks/bin/python' and \
-				l[1] == '/opt/rocks/bin/rocks' and \
-				l[2] == 'start' and l[3] == 'service' and \
-				l[4] == 'airboss':
-			return 1
-
-		return 0
-
-
 	def run(self, params, args):
-		for p in os.listdir('/proc'):
-			if re.match('[0-9]+', p):
-				file = open('/proc/%s/cmdline' % p, 'r')
-				for line in file.readlines():
-					found = self.find_service(line)
-				file.close()
+		app = rocks.commands.start.service.airboss.Airboss()
 
-				if found:
-					os.kill(int(p), 9)	
-					break
+		daemon_runner = \
+			rocks.commands.start.service.airboss.MydaemonRunnner(app)
+		# we don't need the runnner to parse input line
+		# since we already did it
+		daemon_runner._stop()
 
 
 

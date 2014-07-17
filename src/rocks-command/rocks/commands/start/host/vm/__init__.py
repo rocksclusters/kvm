@@ -178,7 +178,6 @@
 
 import os
 import tempfile
-import rocks.vmextended
 import rocks.commands
 import rocks.vmconstant
 import syslog

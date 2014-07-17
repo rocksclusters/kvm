@@ -112,7 +112,6 @@
 import os
 import rocks
 import rocks.commands
-import rocks.vmextended
 import rocks.vmconstant
 
 import sys

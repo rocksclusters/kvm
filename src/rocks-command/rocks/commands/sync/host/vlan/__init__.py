@@ -60,7 +60,6 @@
 import os
 import time
 import rocks.commands
-import rocks.vmextended
 
 
 from rocks.commands.sync.host import Parallel

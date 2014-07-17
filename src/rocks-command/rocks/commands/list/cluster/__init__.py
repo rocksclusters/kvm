@@ -97,7 +97,6 @@
 #
 
 import rocks.commands
-import rocks.vmextended
 from rocks.db.vmextend import getStatus
 
 class Command(rocks.commands.HostArgumentProcessor,

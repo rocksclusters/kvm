@@ -181,19 +181,17 @@ class Plugin(rocks.commands.Plugin):
 			self.owner.abort('unable to find a free port')
 		port = str(port)
 
-		vm = rocks.vmextended.VMextended(self.owner.db)
-		(physnodeid, physhost) = vm.getPhysNode(host)
-		if not physhost:
-			self.owner.abort("Unable to find the container for host %s" % host)
+		if not host.vm_defs or not host.vm_defs.physNode:
+			self.owner.abort("Unable to find the container for host %s" % host.name)
 
 
 		#
 		# let's start the server
-		cmd = 'nbd-server ' + self.nas_server + '.local@' + port + ' ' + self.device_base_path + host
+		cmd = 'nbd-server ' + self.nas_server + '.local@' + port + ' ' + self.device_base_path + host.name
 		self.owner.command('run.host', [self.nas_server, cmd, "collate=true"])
 		# and the client
 		cmd = 'modprobe nbd; nbd-client ' + self.nas_server + '.local ' + port + ' /dev/nbd0'
-		self.owner.command('run.host', [physhost, cmd, "collate=true"])
+		self.owner.command('run.host', [host.vm_defs.physNode.name, cmd, "collate=true"])
 
 		return 
 
@@ -209,7 +207,6 @@ And put the following content into plugin_disallocate.py:
 #
 
 import rocks.commands
-import rocks.vmextended
 
 class Plugin(rocks.commands.Plugin):
 
@@ -223,14 +220,11 @@ class Plugin(rocks.commands.Plugin):
 		# here you can disallovate the resource used by your VM
 		# in rocks DB
 
-		vm = rocks.vmextended.VMextended(self.owner.db)
-		(physnodeid, physhost) = vm.getPhysNode(host)
-
 		# first let kill the clinet
-		self.owner.command('run.host', [physhost, 'nbd-client -d /dev/nbd0'])
+		self.owner.command('run.host', [host.vm_defs.physNode.name, 'nbd-client -d /dev/nbd0'])
 		# then the server
 		self.owner.command('run.host', [self.nas_server, 'pkill -f "nbd-server.*' \
-				+ self.device_base_path + host + '"'])
+				+ self.device_base_path + host.name + '"'])
 
 		return 
 ]]>

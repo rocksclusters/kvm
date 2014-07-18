@@ -529,6 +529,8 @@ class Command(rocks.commands.add.command):
 
 		if container_hosts:
 			containers = container_hosts.split()
+			# normalize the hostnames
+			containers = [self.newdb.getHostname(i) for i in containers]
 		else:
 			containers = self.getVMContainers()
 	

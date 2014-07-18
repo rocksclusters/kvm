@@ -60,6 +60,7 @@ import ssl
 import M2Crypto
 import M2Crypto.BIO
 import logging
+import syslog
 import os
 import sys
 import select
@@ -622,7 +623,11 @@ class Airboss():
 
 		host = ""
 		logger.info('airboss daemon starting')
+		# we need this to reconnect to the DB
 		AirbossTCPHandler.command.newdb.reconnect()
+		# we need this to reconnect to the logger or it will try to send logs 
+		# to the wrong FD number (very very stupid)
+		syslog.closelog()
 		#self.server = SocketServer.ThreadingTCPServer((host, port), AirbossTCPHandler)
 		self.server = SocketServer.TCPServer((host, port), AirbossTCPHandler)
 		self.server.allow_reuse_address = True

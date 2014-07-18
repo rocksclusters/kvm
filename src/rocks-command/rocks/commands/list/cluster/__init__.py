@@ -156,7 +156,8 @@ class Command(rocks.commands.HostArgumentProcessor,
 				# this returns a list of strings
 				clients = clusters.getNodes(frontend.name)
 				# now it is a list of Node
-				clients = self.newdb.getNodesfromNames(clients, **prel)
+				if clients:
+					clients = self.newdb.getNodesfromNames(clients, **prel)
 
 				for client in clients:
 					if client.vm_defs:

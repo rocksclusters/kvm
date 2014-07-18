@@ -111,10 +111,11 @@ def getVClusters(self):
 	query = text("select cluster_name, vlanid, node_name from clusters")
 
 	for (fe, id, node) in self.conn.execute(query):
-		if fe not in ret.nodes:
-			ret.nodes[fe] = [node]
-		else:
-			ret.nodes[fe].append(node)
+		if fe != node:
+			if fe not in ret.nodes:
+				ret.nodes[fe] = [node]
+			else:
+				ret.nodes[fe].append(node)
 		ret.vlans[fe] = id
 
 	return ret
@@ -138,17 +139,18 @@ class VClusters:
 
 	def getFrontends(self):
 		"""return a list of virtual cluster frontends"""
-		return self.nodes.keys()
+		# vlans are populated also for cluster without nodes
+		# while self.nodes does not have any entry for clusters
+		# without nodes
+		return self.vlans.keys()
 
 	def getNodes(self, fename):
 		"""return a list of nodes belonging to this cluster"""
-		return self.nodes[fename]
+		return self.nodes.get(fename, [])
 
 	def getVlan(self, fename):
 		"""return the vlanid used by this cluster"""
 		return self.vlans[fename]
-
-
 
 
 def getStatus(node):

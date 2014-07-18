@@ -128,8 +128,11 @@ class Command(rocks.commands.HostArgumentProcessor,
 			# find all the client nodes related to this frontend.
 			#
 			nodes_str = clusters.getNodes(frontend.name)
-			nodes = self.newdb.getNodesfromNames(nodes_str,
-				preload=["vm_defs", "vm_defs.physNode"])
+			if nodes_str:
+				nodes = self.newdb.getNodesfromNames(nodes_str,
+					preload=["vm_defs", "vm_defs.physNode"])
+			else:
+				nodes = []
 
 			# a set of tuple with (device, vlanid, physicalnode)
 			# to track the network interfaces we have to delete

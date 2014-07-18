@@ -178,7 +178,7 @@ class Command(rocks.commands.report.host.command):
 			returnxml.append("    <interface type='direct'>")
 			# we need to attach to the pyshical interface which starts with p
 			dev = "p" + tap_inter["device"] + "." + str(tap_inter["vlanID"])
-			returnxml.append("      <source dev='p%s' mode='bridge'/>" % dev )
+			returnxml.append("      <source dev='%s' mode='bridge'/>" % dev )
 			returnxml.append("      <mac address='%s'/>" % tap_inter["mac"])
 			returnxml.append("      <model type='virtio' />")
 			returnxml.append("    </interface>")

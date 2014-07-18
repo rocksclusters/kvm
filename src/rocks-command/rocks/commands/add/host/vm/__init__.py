@@ -626,6 +626,9 @@ class Command(rocks.commands.HostArgumentProcessor, rocks.commands.add.command):
 		#
 		self.addToDB(node, membership, subnet, nodename, ip, mem, cpus, 
 			slice, mac, num_macs, disk, disksize, vlanids, virt_type)
+		# write all this stuff to disk
+		self.newdb.commit()
+		self.newdb.renewConnection()
 
 		#
 		# set the default installaction

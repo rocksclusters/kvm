@@ -372,15 +372,14 @@ class AirbossTCPHandler(SocketServer.BaseRequestHandler):
 		elif len(ops) > 2:
 			self.sendresponse(socket, -1, "invalid path")
 			return
-
-		response = self.command.command('set.host.vm.cdrom', 
+		try:
+			response = self.command.command('set.host.vm.cdrom',
 				[node.name, 'cdrom=%s' % filename])
+		except rocks.util.CommandError, e:
+			self.sendresponse(socket, -1, str(e))
+			return
 
-		status = 0
-		if len(response) > 0:
-			status = -1
-
-		self.sendresponse(socket, status, response)
+		self.sendresponse(socket, 0, response)
 
 
 	def power(self, s, action, node_name):

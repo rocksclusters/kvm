@@ -144,6 +144,9 @@ class Command(rocks.commands.start.service.command):
 							[handler.stream]
 			# close all the fs descriptor before forking
 			syslog.closelog()
+			self.newdb.closeSession()
+			self.newdb.close()
+			self.newdb.engine.dispose()
 			# we don't need the runnner to parse input line
 			# since we already did it
 			daemon_runner._start()
@@ -603,6 +606,11 @@ class AirbossTCPHandler(SocketServer.BaseRequestHandler):
 			pass
 
 		s.close()
+
+
+	def finish(self):
+		self.clusters = None
+		self.command.newdb.commit()
 		self.command.newdb.closeSession()
 
 

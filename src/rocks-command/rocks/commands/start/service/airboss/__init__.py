@@ -456,6 +456,7 @@ class AirbossTCPHandler(SocketServer.BaseRequestHandler):
 		msg = 'status:%d\n' % status
 		msg += response
 
+		logger.debug("sending %s message '%s'" % (str(self.client_address), msg))
 		#
 		# send the length of the message
 		#
@@ -611,6 +612,7 @@ class AirbossTCPHandler(SocketServer.BaseRequestHandler):
 		self.clusters = None
 		self.command.newdb.commit()
 		self.command.newdb.closeSession()
+		self.command.newdb.renewConnection()
 
 
 

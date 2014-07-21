@@ -142,6 +142,8 @@ class Command(rocks.commands.start.service.command):
 			# get closed during daemonization
 			daemon_runner.daemon_context.files_preserve = \
 							[handler.stream]
+			# close all the fs descriptor before forking
+			syslog.closelog()
 			# we don't need the runnner to parse input line
 			# since we already did it
 			daemon_runner._start()
@@ -149,7 +151,7 @@ class Command(rocks.commands.start.service.command):
 
 class MydaemonRunnner(daemon.runner.DaemonRunner):
 	"""we need to subclass the (stupid) DaemonRunner so that it does
-	wipe the stdout and stderr everytimes it re-start"""
+	not wipe the stdout and stderr everytimes it re-start"""
 
 
 	def __init__(self, app):
@@ -627,7 +629,6 @@ class Airboss():
 		AirbossTCPHandler.command.newdb.reconnect()
 		# we need this to reconnect to the logger or it will try to send logs 
 		# to the wrong FD number (very very stupid)
-		syslog.closelog()
 		#self.server = SocketServer.ThreadingTCPServer((host, port), AirbossTCPHandler)
 		self.server = SocketServer.TCPServer((host, port), AirbossTCPHandler)
 		self.server.allow_reuse_address = True

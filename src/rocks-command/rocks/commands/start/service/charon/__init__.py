@@ -138,10 +138,7 @@ class Command(rocks.commands.start.service.command):
 
 	def connectDB(self):
 		"""establish a DB connection"""
-		tempdb = rocks.sql.Application()
-		tempdb.connect()
-		self.db.database = tempdb.link
-		self.db.link     = tempdb.link.cursor()
+		self.newdb.reconnect()
 
 
 	def run(self, params, args):
@@ -157,6 +154,10 @@ class Command(rocks.commands.start.service.command):
 		self.logger = logging.getLogger('charon')
 		self.logger.setLevel(logging.DEBUG)
 		fh = logging.FileHandler('/var/log/charon.log')
+
+		formatter = logging.Formatter(
+			"%(asctime)s - %(levelname)s - %(message)s")
+		fh.setFormatter(formatter)
 		fh.setLevel(logging.DEBUG)
 		self.logger.addHandler(fh)
 

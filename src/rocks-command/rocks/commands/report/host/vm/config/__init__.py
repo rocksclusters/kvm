@@ -363,7 +363,7 @@ class Command(rocks.commands.report.host.command):
 				break
 
 		# the extra devices
-		devicexml.append("    <graphics type='vnc' port='-1'/>")
+		devicexml.append("    <graphics type='vnc' port='-1' keymap='en-us'/>")
 		devicexml.append("    <console tty='/dev/pts/0'/>")
 		devicexml.append("  </devices>")
 		xmlconfig = xmlconfig + self.runXMLPlugin(plugins, 'plugin_device',

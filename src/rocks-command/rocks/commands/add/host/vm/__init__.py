@@ -236,6 +236,7 @@ import IPy
 import rocks.commands
 import rocks.vm
 from rocks.db.mappings.base import *
+from rocks.db.mappings.kvm import *
 
 
 

@@ -94,6 +94,7 @@
 import rocks.vm
 import rocks.commands
 import rocks.db.vmextend
+import rocks.db.mappings.kvm
 
 class Command(rocks.commands.HostArgumentProcessor,
 	rocks.commands.remove.command):

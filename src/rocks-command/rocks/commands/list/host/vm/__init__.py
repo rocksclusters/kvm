@@ -137,7 +137,9 @@
 import os.path
 
 import rocks.commands
+import rocks.db.mappings.kvm
 import rocks.db.vmextend
+
 
 
 class Command(rocks.commands.list.host.command):

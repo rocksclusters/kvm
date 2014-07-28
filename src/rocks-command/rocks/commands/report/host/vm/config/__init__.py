@@ -64,6 +64,7 @@ sys.path.append('/usr/lib64/python2.' + str(sys.version_info[1]) + '/site-packag
 sys.path.append('/usr/lib/python2.' + str(sys.version_info[1]) + '/site-packages')
 import rocks.commands
 import rocks.db.vmextend
+import rocks.db.mappings.kvm
 
 class Command(rocks.commands.report.host.command):
 	"""

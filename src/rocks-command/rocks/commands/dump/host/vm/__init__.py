@@ -108,6 +108,7 @@ import os
 import sys
 import string
 import rocks.commands
+import rocks.db.mappings.kvm
 
 class Command(rocks.commands.dump.host.command):
 	"""

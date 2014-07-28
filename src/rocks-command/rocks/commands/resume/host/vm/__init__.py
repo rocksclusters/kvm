@@ -97,6 +97,7 @@
 import os
 import tempfile
 import rocks.commands
+import rocks.db.mappings.kvm
 
 import sys
 sys.path.append('/usr/lib64/python2.' + str(sys.version_info[1]) + '/site-packages')

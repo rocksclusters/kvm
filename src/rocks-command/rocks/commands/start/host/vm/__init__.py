@@ -180,6 +180,7 @@ import os
 import tempfile
 import rocks.commands
 import rocks.vmconstant
+import rocks.db.mappings.kvm
 import syslog
 import re
 

@@ -136,7 +136,7 @@
 import os.path
 import rocks.commands
 import rocks.commands.add.host.vm
-from rocks.db.mappings.base import *
+from rocks.db.mappings.kvm import *
 
 
 class Command(rocks.commands.HostArgumentProcessor, rocks.commands.set.command):

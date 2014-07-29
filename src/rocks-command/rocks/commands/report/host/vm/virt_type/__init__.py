@@ -82,6 +82,7 @@ import os
 import sys
 import string
 import rocks.commands
+import rocks.db.mappings.kvm
 import rocks.vm
 
 header = """

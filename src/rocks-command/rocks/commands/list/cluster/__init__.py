@@ -97,6 +97,7 @@
 #
 
 import rocks.commands
+import rocks.db.mappings.kvm
 from rocks.db.vmextend import getStatus
 
 class Command(rocks.commands.HostArgumentProcessor,

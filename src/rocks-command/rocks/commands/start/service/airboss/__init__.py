@@ -74,6 +74,8 @@ import SocketServer
 import rocks.db.vmextend
 import rocks.commands
 import rocks.commands.start.service
+import rocks.db.mappings.kvm
+
 
 
 sys.path.append('/usr/lib64/python2.' + str(sys.version_info[1]) + '/site-packages')

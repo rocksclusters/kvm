@@ -62,6 +62,8 @@ import time
 import xml.sax.saxutils
 
 from rocks.db.mappings.base import *
+from rocks.db.mappings.kvm import *
+import rocks.db.mappings.kvm
 import rocks.db.vmextend
 import rocks.commands
 

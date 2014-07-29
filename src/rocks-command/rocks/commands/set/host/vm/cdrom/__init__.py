@@ -63,6 +63,7 @@
 
 import os.path
 import rocks.commands
+import rocks.db.mappings.kvm
 
 
 class Command(rocks.commands.HostArgumentProcessor, rocks.commands.set.command):

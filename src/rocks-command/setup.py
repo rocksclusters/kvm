@@ -25,6 +25,7 @@ setup(
     #main package, most of the code is inside here
     packages = [line.rstrip() for line in open('packages')],
     #data_files = [('etc', ['etc/rocksrc'])],
+    package_data={'rocks.db.mappings': ['*.sql']},
     # disable zip installation
     zip_safe = False,
     #the command line called by users    

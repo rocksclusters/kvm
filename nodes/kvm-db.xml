@@ -20,58 +20,9 @@ All rights reserved. Rocks(tm) v4.3 www.rocksclusters.org
 
 <post>
 
-<file name="/tmp/kvm-tables.sql">
-
-DROP TABLE IF EXISTS vm_nodes;
-CREATE TABLE vm_nodes (
-	ID		int(11) NOT NULL auto_increment,
-	PhysNode	int(11) default '0',
-	Node		int(11) NOT NULL default '0',
-	Mem		int(11) NOT NULL default '1024',
-	Slice		int(11) NOT NULL default '0',
-	Virt_Type	varchar(64) default NULL,
-	cdrom_path      varchar(512) default '',
-	PRIMARY KEY(ID),
-	FOREIGN KEY(node) REFERENCES nodes(id) ON DELETE CASCADE,
-	FOREIGN KEY(PhysNode) REFERENCES nodes(id) ON DELETE SET NULL
-);
-
-DROP TABLE IF EXISTS vm_disks;
-CREATE TABLE vm_disks (
-	ID		int(11) NOT NULL auto_increment,
-	Vm_Node		int(11) NOT NULL default '0',
-	VBD_Type	varchar(64) default NULL,
-	Prefix		varchar(512) default NULL,
-	Name		varchar(512) default NULL,
-	Device		varchar(512) default NULL,
-	Mode		varchar(64) default NULL,
-	Size		int(11) NOT NULL default '0',
-	PRIMARY KEY (ID),
-	FOREIGN KEY(Vm_Node) REFERENCES vm_nodes(id) ON DELETE CASCADE
-);
-
-
---
--- create a view with fe_name, vlanid, nodes of the cluster
--- for every cluster to simplify querying
---
-DROP VIEW IF EXISTS clusters;
-CREATE VIEW clusters AS
-SELECT n.name as cluster_name, net.vlanid, n2.name as node_name
-FROM networks net, nodes n, vm_nodes vmn, memberships mem, subnets sub,
-     nodes n2, networks net2, vm_nodes vmn2
-WHERE n.id = net.node AND n.id = vmn.node
-	AND mem.name = 'Frontend' AND mem.id = n.membership
-	AND net.vlanid > 0 AND sub.name = 'private'
-	AND sub.id = net.subnet
-	AND n2.id = net2.node
-	AND net2.vlanid = net.vlanid
-	AND n2.id = vmn2.node;
-
-</file>
-
-/opt/rocks/mysql/bin/mysql --defaults-extra-file=/root/.rocks.my.cnf \
-	--user=root cluster &lt; /tmp/kvm-tables.sql
+rocks report databasesql kvm | /opt/rocks/mysql/bin/mysql \
+	--defaults-extra-file=/root/.rocks.my.cnf --user=root cluster &gt;\
+	/tmp/kvm-database.log
 
 /opt/rocks/sbin/rocks-db-perms
 </post>

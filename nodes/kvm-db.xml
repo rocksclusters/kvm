@@ -20,8 +20,8 @@ All rights reserved. Rocks(tm) v4.3 www.rocksclusters.org
 
 <post>
 
-rocks report databasesql kvm | /opt/rocks/mysql/bin/mysql \
-	--defaults-extra-file=/root/.rocks.my.cnf --user=root cluster &gt;\
+/opt/rocks/bin/rocks report databasesql kvm | /opt/rocks/mysql/bin/mysql \
+	--defaults-extra-file=/root/.rocks.my.cnf --user=root cluster &amp;&gt;\
 	/tmp/kvm-database.log
 
 /opt/rocks/sbin/rocks-db-perms

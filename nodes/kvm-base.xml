@@ -34,6 +34,8 @@ All rights reserved. Rocks(tm) v4.3 www.rocksclusters.org
 <package>virt-v2v</package>
 
 
+<package>foundation-python-daemon</package>
+<package>foundation-python-lockfile</package>
 <package>rocks-command-kvm</package>
 <package>rocks-kvm-vlan-init</package>
 <package>gnutls-utils</package>

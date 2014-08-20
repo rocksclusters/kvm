@@ -179,6 +179,8 @@ else
 	BIG_PART="$BIG_PART/kvm/save"
 fi
 
+# remove old stale saved VM in case there are still hanging there
+rm -f $BIG_PART/*.save
 
 ORIG=/var/lib/libvirt/qemu/save
 if [ -e "$ORIG" ]; then

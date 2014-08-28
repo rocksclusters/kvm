@@ -77,7 +77,7 @@ build:
 
 install::
 	find rocks | sed -e 's/\//./g' -e '/\.py/d' -e '/\.sql/d' > packages
-	$(PY.PATH) setup.py install --root=$(ROOT)
+	$(PY.PATH) setup.py install -f --root=$(ROOT)
 
 
 clean::

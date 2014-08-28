@@ -66,7 +66,7 @@ import threading
 import signal
 import subprocess
 import shlex
-import _mysql_exceptions
+import sqlalchemy
 
 
 import rocks.vm
@@ -138,6 +138,7 @@ class Command(rocks.commands.start.service.command):
 
 	def connectDB(self):
 		"""establish a DB connection"""
+		self.newdb.closeSession()
 		self.newdb.reconnect()
 
 
@@ -247,7 +248,7 @@ class Command(rocks.commands.start.service.command):
 		# in that case
 		try:
 			self.db.execute(physical_nodes_sql)
-		except _mysql_exceptions.OperationalError:
+		except sqlalchemy.exc.OperationalError:
 			self.connectDB()
 			self.db.execute(physical_nodes_sql)
 

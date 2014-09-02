@@ -124,7 +124,7 @@ class Command(rocks.commands.restore.host.command):
 	<param type='string' name='file'>
 	The file name the saved VM state is stored in. If you don't
 	supply this parameter, then the default file name is:
-	/&lt;largest-partition-on-physical-host&gt;/kvm/disks/&lt;vm-name%gt;.saved.
+	/&lt;largest-partition-on-physical-host&gt;/kvm/disks/&lt;vm-name&gt;.saved.
 	For example, on a physical node with the default partitioning, the
 	file that contains the state for VM compute-0-0-0 is:
 	/state/partition1/kvm/disks/compute-0-0-0.saved

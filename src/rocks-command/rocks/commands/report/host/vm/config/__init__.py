@@ -222,7 +222,7 @@ class Command(rocks.commands.report.host.command):
 		attribute = self.newdb.getHostAttr(node, 'kvm_cpu_pinning')
 		if attribute == "pin_all":
 			xmlconfig.append("  <cputune>")
-			for i in range(cpus):
+			for i in range(node.cpus):
 			        xmlconfig.append("    <vcpupin vcpu=\"%d\" cpuset=\"%d\"/>" % (i, i))
 			xmlconfig.append("  </cputune>")
 		elif attribute:

@@ -478,8 +478,8 @@ Lastly, to power off a virtual compute node (e.g., compute-0-0), execute:
 
 
 <section id="using-virt-manager"
-	xreflabel="Using RedHat's Virt-Manager (Root Users Only)">
-	<title>Using RedHat's Virt-Manager (Root Users Only)</title>
+	xreflabel="Using Virtual Machine Manager (Root Users Only)">
+	<title>Using Virtual Machine Manager (Root Users Only)</title>
 
 <para>
 The <command>virt-manager</command> program included in CentOS is a desktop user interface 

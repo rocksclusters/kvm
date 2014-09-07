@@ -1,7 +1,7 @@
 <section id="config" xreflabel="Configuring Virtual Machine">
 	<title>Advanced Configuration</title>
 <para>
-In this section we present several enancements introduced with Rocks 6.2
+In this section we present several enhancements introduced with Rocks 6.2
 which allow greater control of the virtualization functionalities.
 </para>
 
@@ -12,13 +12,13 @@ which allow greater control of the virtualization functionalities.
 <para>
 The KVM roll allows users to define custom plugins which are invoked at each 
 VM startup and shutdown. The plugins can be used to re-allocate the VM on 
-different physiscal container or to mount and unmount storage system for 
+a different physical container or to mount and unmount a storage system for 
 the VM images, or to change some hardware feature of the VM before it is 
 booted.
 </para>
 
 <para>
-There are two different startup plugin which are triggered in different stages
+There are two different startup plugins which are triggered in different stages
 of the startup process.  They both reside in
 <filename>/opt/rocks/lib/python2.6/site-packages/rocks/commands/start/host/vm</filename>
 and they must be called as indicated below.
@@ -31,7 +31,7 @@ and they must be called as indicated below.
 	<listitem>
 	<para>
 	This script is invoked before the virtual machine is started and
-	at this stage it is still possible to make modification to the rocks database.
+	at this stage it is still possible to make modifications to the Rocks database.
 	This means that it is still possible to modify the physical container of the 
 	virtual machine or its networking configuration.
 	</para>
@@ -43,9 +43,9 @@ and they must be called as indicated below.
 	<listitem>
 	<para>
 	This script is invoked before the virtual machine is started but 
-	at this stage it is not possible to make modification to the rocks 
-	database. The virtual machine can not be relocated anymore a different 
-	VM container. If this scirpt return a string it will be used as the libvirt 
+	at this stage it is not possible to make modifications to the Rocks 
+	database. The virtual machine can not be relocated anymore to a different 
+	VM container. If this script returns a string it will be used as the libvirt 
 	XML startup. This means that it is still possible to make temporary changes 
 	to the hardware of the virtual machine.
 	</para>
@@ -93,7 +93,7 @@ Several attributes can be used to customize the virtual hardware of the VM.
 <warning>
 <para>
 Since attribute values will be used inside an XML file during the kickstart
-generation they need to be properly escaped following XML escaping roule 
+generation they need to be properly escaped following XML escaping rules 
 (only the characters  &gt;, &lt; and &amp; will be escaped).
 For this reason the attribute value might appear different when running 
 <command>rocks list host attr</command>.
@@ -184,9 +184,9 @@ libvirt xml as a child of the &lt;domain&gt; root tag.
 </para>
 
 <para>
-For example the following command will pin vritual CPU 0 to physical CPU
-4, vritual CPU 1 to physical CPU 5, vritual CPU 2 to physical CPU 6 and 
-vritual CPU 3 to physical CPU 7 on VM called hosted-vm-0-2-0.
+For example the following command will pin virtual CPU 0 to physical CPU
+4, virtual CPU 1 to physical CPU 5, virtual CPU 2 to physical CPU 6 and 
+virtual CPU 3 to physical CPU 7 on VM called hosted-vm-0-2-0.
 </para>
 
 <screen>
@@ -256,7 +256,7 @@ the changes.
 <title>Host Autorestart</title>
 
 <para>
-If a virtaul machine has the attribute 
+If a virtual machine has the attribute 
 <filename>kvm_autostart</filename> defined with a value equal to true
 it will be automatically restart if the physical container is rebooted.
 

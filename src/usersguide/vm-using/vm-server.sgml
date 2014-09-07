@@ -2,7 +2,7 @@
 	<title>Installing a VM Server</title>
 
 <para>
-A VM Server is machine that can house virtual frontend appliances.
+A VM Server is a machine that can house virtual frontend appliances.
 It is required to build a VM Server if you wish to build virtual clusters.
 </para>
 

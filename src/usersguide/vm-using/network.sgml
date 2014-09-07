@@ -2,11 +2,11 @@
 	<title>KVM Networking (Advanced)</title>
 
 <para>
-In order to support KVM Virtual Machines it is neccesary to have in place a 
+In order to support KVM Virtual Machines it is necessary to have in place a 
 particular network configuration on the hosting servers (which can be frontends
 or vm-containers). In particular bridges must be set up to provide Virtual 
 Machine with network connectivity (KVM networking differ substantially from 
-XEN networking). In this paragraph we will explain in much details what are 
+XEN networking). In this paragraph we will explain in detail what are 
 the differences from a standard Rocks Cluster network configuration.
 </para>
 
@@ -14,8 +14,9 @@ the differences from a standard Rocks Cluster network configuration.
 <title>VM Network Bridging to Physical Devices</title>
 
 <para>
-When a VM is bridged to the physical device, it must be assigned in the same subnet as the physical device with 
-a compatible IP address (this case is exactly what is described in <xref linkend="using-vm-physical-frontend"> ).
+When a VM is bridged to the physical device, it must be assigned in the same
+subnet as the physical device with a compatible IP address (this case is exactly
+what is described in <xref linkend="using-vm-physical-frontend"> ).
 </para>
 
 <para>
@@ -70,7 +71,7 @@ The virtual machine hosted-vm-0-0-0 will be connected to the network through a
 Logical VLAN (for more information consult 
 <ulink url="http://www.rocksclusters.org/roll-documentation/base/6.0/x1051.html#NETWORKING-LOGICAL-VLAN">
 the Base Roll documentation on networking</ulink>).
-Logical Vlan interfaces don't need bridge device and they are dynamically loaded only when 
+Logical VLAN interfaces don't need bridge device and they are dynamically loaded only when 
 the virtual machine is started. They are called after the physical name interface 
 simply adding the number of the VLAN (e.g. VLAN 2 on peth0 will be called peth0.2).
 Virtual machines are attached to the VLAN interface using a 

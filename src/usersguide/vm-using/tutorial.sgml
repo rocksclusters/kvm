@@ -4,7 +4,7 @@
 <para>
 Since Rocks version 6.2 the kvm roll support plugins which are called
 at VMs startup and shutdown. Thanks to this users can customize several
-aspects of VM storage and networking. In the follwoing example we show
+aspects of VM storage and networking. In the following example we show
 how to use a central NAS as a repository for VM images using Network Block
 Device.
 </para>
@@ -111,8 +111,8 @@ Syncing Network Configuration -->
 </screen>
 
 <para>
-For this tutorial we assume there is a nas-0-0 with preinstalled zfs 
-with a pool with enough capacity called /testpool. The script exepct to 
+For this tutorial we assume there is a nas-0-0 with preinstalled ZFS 
+with a pool with enough capacity called /testpool. The script expects to 
 find a preallocated zvol called /testpool/test-vm/hostname.
 To preallocate all the required space for the tree virtual machine we 
 run the commands:
@@ -240,7 +240,7 @@ class Plugin(rocks.commands.Plugin):
 <title>Using the Virtual Cluster</title>
 
 <para>
-To start the cluster you can use the satndard Rocks command
+To start the cluster you can use the standard Rocks command
 </para>
 
 <screen>

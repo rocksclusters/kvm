@@ -57,10 +57,22 @@ and they must be called as indicated below.
 <para>
 There is one shutdown plugin which should be placed in:
 <filename>/opt/rocks/lib/python2.6/site-packages/rocks/commands/stop/host/vm</filename>
-The shutdown plugin must be called <filename>plugin_disallocate.py</filename> in order 
-to be invoked. This script is invoked after the virtual machine is shutdown and it should
-release the resources allocated by the two previous scirpts.
+The shutdown plugin must be called as indicated below.
 </para>
+
+<variablelist>
+
+	<varlistentry>
+	<term><varname>plugin_disallocate.py</varname></term>
+	<listitem>
+	<para>
+	This script is invoked after the virtual machine is shutdown and it should
+	release the resources allocated by the two previous scripts.
+	</para>
+	</listitem>
+	</varlistentry>
+
+</variablelist>
 
 <para>
 The daemon process <filename>charon</filename> is in charge of monitoring the various physical 

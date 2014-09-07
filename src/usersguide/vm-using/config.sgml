@@ -95,8 +95,8 @@ Several attributes can be used to customize the virtual hardware of the VM.
 Since attribute values will be used inside an XML file during the kickstart
 generation they need to be properly escaped following XML escaping roule 
 (only the characters  &gt;, &lt; and &amp; will be escaped).
-For this reason attibute value might appear different when running 
-rocks list host attr.
+For this reason the attribute value might appear different when running 
+<command>rocks list host attr</command>.
 </para>
 </warning>
 
@@ -120,7 +120,8 @@ host-model: The host-model mode is essentially a shortcut to copying host CPU de
 capabilities XML into domain XML. Since the CPU definition is copied just before starting a 
 domain, exactly the same XML can be used on different hosts while still providing the best 
 guest CPU each host supports. Use this mode if you need to migrate virtual machine.
-It is not possible to use the cpu_match attribute described below when in this mode.
+It is not possible to use the <filename>cpu_match</filename> attribute described below 
+when in this mode.
 </para>
 </listitem>
 
@@ -137,12 +138,13 @@ mode.
 </itemizedlist>
 
 <para>
-The attribute cpu_match can be used to specify a specific topology or model type for the cpu.
-The value of the cpu_match attribute is compose of a two parts divided by a colon. The first 
-part (before the colon) is used in the attribute match of the tag cpu (see 
+The attribute <filename>cpu_match</filename> can be used to specify a specific topology 
+or model type for the cpu.
+The value of the <filename>cpu_match</filenam> attribute is compose of a two parts divided 
+by a colon. The first part (before the colon) is used in the attribute match of the tag cpu (see 
 <ulink url="http://libvirt.org/formatdomain.html#elementsCPU">Libvirt Documentation</ulink> 
 for more details). While the second part if present will be copied between the two cpu tags.
-So for example if the cpu_match attribute value is: 
+So for example if the <filename>cpu_match</filename> attribute value is: 
 </para>
 
 <screen>
@@ -277,8 +279,8 @@ container is restarted.
 Starting with Rocks 6.2 it is possible to run virtual machine on every type
 of node, for example you can have compute nodes which runs virtual machines.
 VM Containers are automatically enabled but if the user wants to enable a generic
-node to run virtual machines it must set the attribute kvm equal to true, and
-then re-install the node. After the re-installation the node will be able to host
+node to run virtual machines it must set the attribute <filename>kvm</filename> equal to 
+true, and then re-install the node. After the re-installation the node will be able to host
 virtual machines.
 </para>
 </section>

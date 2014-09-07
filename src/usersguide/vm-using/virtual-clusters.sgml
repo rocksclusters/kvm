@@ -132,7 +132,7 @@ a VLAN that will be used for the private network (eth0 inside the VM).
 <para>
 Info about all the defined clusters on the VM Server (including the
 physical cluster) can be obtained with the command:
-<computeroutput>rocks list cluster</computeroutput>:
+<command>rocks list cluster</command>:
 </para>
 
 <screen>
@@ -482,9 +482,9 @@ Lastly, to power off a virtual compute node (e.g., compute-0-0), execute:
 	<title>Using RedHat's Virt-Manager (Root Users Only)</title>
 
 <para>
-Virt-manager is a program produced by RedHat that is a desktop user interface
+The <command>virt-manager</command> program included in CentOS is a desktop user interface 
 for managing virtual machines.
-This section describes how to use some of virt-manager's features to control
+This section describes how to use <command>virt-manager</command> functionality to control 
 and monitor VMs on a Rocks cluster.
 </para>
 

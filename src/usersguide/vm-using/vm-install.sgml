@@ -89,7 +89,7 @@ libvir: KVM Daemon error : POST operation failed: (kvm.err "Error creating domai
 This is not a problem.
 The above means the file that will be used for the VMs disk space was not
 present when the VM was started.
-The "rocks start host vm" command eventually creates it and starts the VM.
+The <command>rocks start host vm</command> command eventually creates it and starts the VM.
 That is, while you may see the error message above, the VM is actually running
 and installing.
 </para>

@@ -32,7 +32,7 @@ interface named peth0 in promiscuous mode attached to a bridge named eth0 with
 IP address 1.2.3.4 and netmask 255.255.255.0. The creation of the bridge 
 device, the renaming of the physical interface and the assignment of the IP 
 address is all managed by Rocks through the Red Hat init scripts. This 
-means that <filename>rocks sync host network</filename> creates the proper 
+means that <command>rocks sync host network</command> creates the proper 
 configuration files in <filename>/etc/sysconfig/network-scripts/</filename>.
 </para>
 
@@ -76,7 +76,7 @@ simply adding the number of the VLAN (e.g. VLAN 2 on peth0 will be called peth0.
 Virtual machines are attached to the VLAN interface using a 
 <ulink url="http://virt.kernelnewbies.org/MacVTap">MacVTap</ulink> driver which does 
 not require any bridging infrastructure. After you run a 
-<filename>rocks start host vm hosted-vm-0-0-0</filename> if you go on the physical 
+<command>rocks start host vm hosted-vm-0-0-0</command> if you go on the physical 
 node you will see an interface called peth0.2 (the physical peth0 with the VLAN tag 
 set to 2) and the macvtap0 which is the interface used by the virtual host.
 </para>

@@ -248,7 +248,7 @@ To start the cluster you can use the satndard Rocks command
 </screen>
 
 <para>
-Install the frontend and then run insert-ehter on the vritual frontend 
+Install the frontend and then run <command>insert-ethers</command> on the virtual frontend 
 and turn on the compute nodes.
 </para>
 
@@ -267,7 +267,7 @@ a different physical host using the following command:
 </screen>
 
 <para>
-When vm-rocks-216-1 will be restarted (with rocks start host vm) it will
+When vm-rocks-216-1 will be restarted (with <command>rocks start host vm</command>) it will
 be automatically migrated on the new physical host compute-0-0
 </para>
 

@@ -135,9 +135,9 @@ Rename the following files on your frontend:
 
 <screen>
  cd /opt/rocks/lib/python2.6/site-packages/rocks/commands/start/host/vm
- mv plugin_example_allocate.py plugin_allocate.py
+ mv exampleplugin_allocate.py plugin_allocate.py
  cd /opt/rocks/lib/python2.6/site-packages/rocks/commands/stop/host/vm
- mv plugin_example_disallocate.py plugin_disallocate.py
+ mv exampleplugin_disallocate.py plugin_disallocate.py
 </screen>
 
 <para>

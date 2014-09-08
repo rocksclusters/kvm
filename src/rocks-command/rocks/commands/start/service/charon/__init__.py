@@ -138,7 +138,10 @@ class Command(rocks.commands.start.service.command):
 
 	def connectDB(self):
 		"""establish a DB connection"""
-		self.newdb.closeSession()
+		try:
+			self.newdb.closeSession()
+		except Exception as e:
+			self.logger.critical("Error closing DB session: " + str(e))
 		self.newdb.reconnect()
 
 
@@ -149,6 +152,7 @@ class Command(rocks.commands.start.service.command):
 
 		foreground, = self.fillParams([ ('foreground', 'n') ])
 		if not self.str2bool(foreground):
+			self.newdb.closeSession()
 			self.daemonize()
 
 		# create logger

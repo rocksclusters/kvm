@@ -140,7 +140,7 @@ mode.
 <para>
 The attribute <filename>cpu_match</filename> can be used to specify a specific topology 
 or model type for the cpu.
-The value of the <filename>cpu_match</filenam> attribute is compose of a two parts divided 
+The value of the <filename>cpu_match</filename> attribute is compose of a two parts divided 
 by a colon. The first part (before the colon) is used in the attribute match of the tag cpu (see 
 <ulink url="http://libvirt.org/formatdomain.html#elementsCPU">Libvirt Documentation</ulink> 
 for more details). While the second part if present will be copied between the two cpu tags.

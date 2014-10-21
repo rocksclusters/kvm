@@ -251,15 +251,15 @@ class Command(rocks.commands.start.service.command):
 		# DB goes in timeout after a while if inactive so we must reconnect
 		# in that case
 		try:
-			self.db.execute(physical_nodes_sql)
+			self.newdb.execute(physical_nodes_sql)
 		except sqlalchemy.exc.OperationalError:
 			self.connectDB()
-			self.db.execute(physical_nodes_sql)
+			self.newdb.execute(physical_nodes_sql)
 
 		vm_containers = set()
-		for host, in self.db.fetchall():
+		for host, in self.newdb.fetchall():
 			# storing here all the attributes we avoid repeating DB queries
-			attrs = self.db.getHostAttrs(host)
+			attrs = self.newdb.getHostAttrs(host)
 			if attrs.get('managed') == 'true' and \
 				attrs.get('kvm') == 'true':
 				vm_containers.add(rocks.vmconstant.connectionURL % host)
@@ -283,6 +283,10 @@ class Command(rocks.commands.start.service.command):
 				except:
 					pass
 				del self.vircon_list[url]
+
+		# we need to free up the session which is used by the 
+		# getHostAttrs(host)
+		self.newdb.closeSession()
 
 
 

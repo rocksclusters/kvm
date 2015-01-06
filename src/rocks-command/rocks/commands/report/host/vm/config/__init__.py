@@ -203,19 +203,22 @@ class Command(rocks.commands.report.host.command):
 		xmlconfig.append("  <memory>%s</memory>" % (node.vm_defs.mem * 1024))
 		xmlconfig.append("  <vcpu>%s</vcpu>" % node.cpus)
 
-                # cpu_mode you can specify the capabilities of the virtual cpu
-                # host-passthrough should be the default for speed
-                cpu_mode = self.newdb.getHostAttr(node, 'cpu_mode')
-                cpu_match = self.newdb.getHostAttr(node, 'cpu_match')
-                if cpu_mode :
-                        xmlconfig.append("  <cpu mode='" +
-				cpu_mode + "'/>")
-                elif cpu_match :
-                        cpu_match_split = cpu_match.split(':', 1)
-                        xmlconfig.append("  <cpu mode='" + cpu_match_split[0] + "'>")
-                        if len(cpu_match_split) > 1 :
-                                xmlconfig.append( cpu_match_split[1] )
-                        xmlconfig.append("  </cpu>")
+		# cpu_mode you can specify the capabilities of the virtual cpu
+		# host-passthrough should be the default for speed
+		# if after the cpu_mode there is a : then the remaining of the
+		# attribute value is used as a string for inner content of the
+		# <cpu> </cpu> tag
+		cpu_mode = self.newdb.getHostAttr(node, 'cpu_mode')
+		if cpu_mode :
+			cpu_match_split = cpu_mode.split(':', 1)
+			if len(cpu_match_split) > 1:
+				# cpu mode contains inner tag of cpus
+				xmlconfig.append("  <cpu mode='" + cpu_match_split[0] + "'>")
+				xmlconfig.append( cpu_match_split[1] )
+				xmlconfig.append("  </cpu>")
+			else:
+				xmlconfig.append("  <cpu mode='" +
+						cpu_mode + "'/>")
 
 		# for cpu pinning
 		attribute = self.newdb.getHostAttr(node, 'kvm_cpu_pinning')

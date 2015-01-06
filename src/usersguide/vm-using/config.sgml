@@ -120,8 +120,6 @@ host-model: The host-model mode is essentially a shortcut to copying host CPU de
 capabilities XML into domain XML. Since the CPU definition is copied just before starting a 
 domain, exactly the same XML can be used on different hosts while still providing the best 
 guest CPU each host supports. Use this mode if you need to migrate virtual machine.
-It is not possible to use the <filename>cpu_match</filename> attribute described below 
-when in this mode.
 </para>
 </listitem>
 
@@ -138,13 +136,13 @@ mode.
 </itemizedlist>
 
 <para>
-The attribute <filename>cpu_match</filename> can be used to specify a specific topology 
+The attribute <filename>cpu_mode</filename> can also be used to specify a specific topology 
 or model type for the cpu.
-The value of the <filename>cpu_match</filename> attribute is compose of a two parts divided 
-by a colon. The first part (before the colon) is used in the attribute match of the tag cpu (see 
-<ulink url="http://libvirt.org/formatdomain.html#elementsCPU">Libvirt Documentation</ulink> 
-for more details). While the second part if present will be copied between the two cpu tags.
-So for example if the <filename>cpu_match</filename> attribute value is: 
+If the value of <filename>cpu_mode</filename> attribute has a colon then the second part of the value
+(the one after the colon) will be used as a string to be inserted between the cpu tag.
+To better understand what tags can be used inside the cpu tag see the
+<ulink url="http://libvirt.org/formatdomain.html#elementsCPU">Libvirt Documentation</ulink>.
+So for example if the <filename>cpu_mode</filename> attribute value is: 
 </para>
 
 <screen>

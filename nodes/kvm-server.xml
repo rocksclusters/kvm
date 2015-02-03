@@ -171,7 +171,7 @@ cp /etc/pki/CA/private/cakey.pem /tmp/cakey.pem
 
 <post>
 
-/opt/rocks/bin/rocks add host firewall localhost network=all service="8677" \
+/opt/rocks/bin/rocks add firewall host=localhost network=all service="8677" \
 	protocol="tcp" action="REJECT" chain="INPUT" \
 	comment="block airboss traffic from non-private interfaces" \
 	rulename="R100-AIRBOSS" rulesrc="system"

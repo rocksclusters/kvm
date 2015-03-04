@@ -126,8 +126,8 @@ class Command(rocks.commands.stop.host.command):
 	<param type='bool' name='terminate'>
 	If this is true the command will run only the plugin since it will
 	assume that the host is already down.
-	This is used by charon to invoke the plugin when the machine powered 
-	off through the VM operating system
+	This is used by to invoke the plugin when the machine is powered 
+	so external allocated resource can be freed (e.g. iSCSI connection)
 	</param>
 
 	<arg type='string' name='host' repeat='1'>

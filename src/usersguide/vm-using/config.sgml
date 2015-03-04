@@ -74,12 +74,6 @@ The shutdown plugin must be called as indicated below.
 
 </variablelist>
 
-<para>
-The daemon process <filename>charon</filename> is in charge of monitoring the various physical 
-containers and of notifying the <filename>plugin_disallocate.py</filename> when a node is 
-powered off.
-</para>
-
 </section>
 
 

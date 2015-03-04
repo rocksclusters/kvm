@@ -166,7 +166,6 @@ cp /etc/pki/CA/private/cakey.pem /tmp/cakey.pem
 <!-- turn on the service that allows users to control their VMs -->
 
 /sbin/chkconfig --add rocks-airboss
-/sbin/chkconfig --add rocks-charon
 </post>
 
 <post>

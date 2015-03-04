@@ -83,4 +83,3 @@ build:
 install::
 	mkdir -p $(ROOT)/$(PKGROOT)
 	install -m 755 rocks-airboss $(ROOT)/$(PKGROOT)/
-	install -m 755 rocks-charon $(ROOT)/$(PKGROOT)/

@@ -164,8 +164,18 @@ cp /etc/pki/CA/private/cakey.pem /tmp/cakey.pem
 
 <post>
 <!-- turn on the service that allows users to control their VMs -->
-
 /sbin/chkconfig --add rocks-airboss
+
+<!-- add serf handler, if serf is not intalled the file will just sit there
+     -->
+/bin/mkdir -p /etc/serf
+<file name="/etc/serf/kvm_down.json" perms="0700" rcs="false">
+{
+  "event_handlers": [
+    "user:kvm_stop=/opt/rocks/bin/kvm_handler"
+  ]
+}
+</file>
 </post>
 
 <post>

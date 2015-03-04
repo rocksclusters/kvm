@@ -1,0 +1,26 @@
+#!/bin/bash
+#
+# called different time by the libvrtd during VM lifecycle
+# we only need it when the machine is shut down, which 
+# means this script will be invoked with the following:
+# 
+# /etc/libvirt/hooks/qemu guest_name release end -
+#
+
+
+LOG=/var/log/libvirt_event.log
+
+
+if [ "$2" == "release" ] && [ "$3" == "end" ] ; then
+
+	# no serf no party
+	test -f /opt/rocks/bin/serf || exit 0
+
+	echo "[`date`] VM $1 is going down: " >> $LOG
+	container=`/bin/hostname -s`
+	# here we should use a real secret and hot just the container name
+	# for example the host private ssh key or simimlar but for  the
+	# time being the simple hostname will do
+	hash=`echo -n $1 | openssl dgst -sha1 -hex -hmac "$container" | sed 's/(stdin)= //'`
+	/opt/rocks/bin/serf event -rpc-auth=`cat /etc/serf/rpcauth` -coalesce=false kvm_stop "$1 $hash" >> $LOG 2>&1
+fi

@@ -29,5 +29,5 @@ setup(
     # disable zip installation
     zip_safe = False,
     #the command line called by users    
-    scripts=['rocks-create-vm-disks'],
+    scripts=['rocks-create-vm-disks', 'kvm_handler'],
 )

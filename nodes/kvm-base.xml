@@ -158,7 +158,8 @@ mv /dev/random.orig /dev/random
 
 
 <post>
-<!-- automatically start kvm vlan for Macvtap interfaces -->
+<!-- automatically start kvm vlan for Macvtap interfaces after a reboot
+     this is needed to automatically restart VM after a reboot  -->
 /sbin/chkconfig rocks-kvm-vlan on
 </post>
 

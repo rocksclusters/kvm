@@ -128,6 +128,11 @@ class Command(rocks.commands.stop.host.command):
 	assume that the host is already down.
 	This is used by to invoke the plugin when the machine is powered 
 	so external allocated resource can be freed (e.g. iSCSI connection)
+	NB: if terminate is not equal to true the plugin will not be called.
+	Basically the command either stops the VM or calls the plugins (this
+	is to account for the fact that the libvirtd hooks are called both
+	when the host is shutdown and when the host is forcefully stopped
+	with rocks stop host vm)
 	</param>
 
 	<arg type='string' name='host' repeat='1'>
@@ -184,12 +189,13 @@ class Command(rocks.commands.stop.host.command):
 				except libvirt.libvirtError, m:
 					pass
 
-			#
-			# run the terminate plugins to deallocate the host resources
-			#
-			for plugin in plugins:
-				syslog.syslog(syslog.LOG_INFO, 'run %s' % plugin)
-				plugin.run(node)
+			if terminate:
+				#
+				# run the terminate plugins to deallocate the host resources
+				#
+				for plugin in plugins:
+					syslog.syslog(syslog.LOG_INFO, 'run %s' % plugin)
+					plugin.run(node)
 
 
 

@@ -268,12 +268,14 @@ class Command(rocks.commands.report.host.command):
 			netmask = None
 			dns = None
 			gateway = None
+			mac = None
 			if node.name in self.getHostnames( [ 'frontend' ]):
 				subnet = 'public'
 				for network in node.networks:
 					if network.subnet.name == 'public':
 						ip = network.ip
 						netmask = network.subnet.netmask
+						mac = network.mac
 				
 				dns = self.newdb.getHostAttr(node,
 					'Kickstart_PublicDNSServers')
@@ -296,6 +298,8 @@ class Command(rocks.commands.report.host.command):
 			if gateway:
 			        bootargs += ' gateway=%s ' % gateway
 			
+			if mac:
+				bootargs = bootargs.replace("ksdevice=eth1","ksdevice=%s" % mac)
 			returnxml.append("    <kernel>%s</kernel>" % bootaction.kernel )
 			returnxml.append("    <initrd>%s</initrd>" % bootaction.ramdisk )
 			returnxml.append("    <cmdline>%s</cmdline>" % bootargs )

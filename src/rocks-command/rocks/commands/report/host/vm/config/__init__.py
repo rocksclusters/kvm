@@ -177,17 +177,27 @@ class Command(rocks.commands.report.host.command):
 		for tap_inter in self.newdb.getPhysTapDevicefromVnode(node):
 			returnxml.append("    <interface type='direct'>")
 			# we need to attach to the pyshical interface which starts with p
-			dev = "p" + tap_inter["device"] + "." + str(tap_inter["vlanID"])
+			options = tap_inter["options"]
+			if options is not None and options.find("novtap") >= 0:
+				prefix = ""
+			else:
+				prefix = "p"
+			dev = prefix + tap_inter["device"] + "." + str(tap_inter["vlanID"])
 			returnxml.append("      <source dev='%s' mode='bridge'/>" % dev )
 			returnxml.append("      <mac address='%s'/>" % tap_inter["mac"])
 			returnxml.append("      <model type='virtio' />")
 			returnxml.append("    </interface>")
 
 		for bridged_inter in self.newdb.getPhysBridgedDevicefromVnode(node):
+			if bridged_inter["module"] == 'ovs-link':
+				continue
 			returnxml.append("    <interface type='bridge'>")
 			returnxml.append("      <source bridge='%s'/>" % bridged_inter["device"])
 			returnxml.append("      <mac address='%s'/>" % bridged_inter["mac"])
-			returnxml.append("      <model type='virtio' />")
+			if bridged_inter["module"] == 'ovs-bridge':
+				returnxml.append("      <virtualport type='openvswitch'/>")
+			else:
+				returnxml.append("      <model type='virtio'/>")
 			returnxml.append("    </interface>")
 
 		return returnxml
@@ -402,7 +412,3 @@ class Command(rocks.commands.report.host.command):
 			self.addOutput(node.name, '%s' % xmlconfig)
 		self.endOutput(padChar='')
 
-
-
-
-RollName = "kvm"

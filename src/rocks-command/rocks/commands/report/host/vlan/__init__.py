@@ -88,7 +88,13 @@ class Command(rocks.commands.HostArgumentProcessor,
 		ret = ""
 
 		for physicaldev in self.newdb.getPhysTapDevicefromVnode(node):
-			device = 'p' + physicaldev["device"]
+			options = physicaldev["options"]
+			if options is not None and options.find("novtap") >= 0:
+				prefix=""
+			else:
+				prefix="p"
+			
+			device = prefix + physicaldev["device"]
 			vlanid = physicaldev["vlanID"]
 			physhost = node.vm_defs.physNode
 
@@ -144,5 +150,3 @@ class Command(rocks.commands.HostArgumentProcessor,
 
                 self.endOutput(padChar='')
 
-
-RollName = "kvm"

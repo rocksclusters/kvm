@@ -24,7 +24,8 @@ from rocks.db.mappings.base import *
 def getPhysTapDevicefromVnode(self, node):
 	"""Given a virtual node it returns a list of dictionaries with
 	{'device': phys_device_name, "vlanID": phys_device_vlan,
-	"mac": virtual_mac_address} which are needed for this virtual
+	"mac": virtual_mac_address, "options": options on the physical interface, "module":module of the physical interface
+	} which are needed for this virtual
 	host. This list includes only tap device, it does not include
 	bridged interfaces"""
 
@@ -43,7 +44,7 @@ def getPhysTapDevicefromVnode(self, node):
 	# now find the physical device name corresponding to the subnets
 	# found in the previous query (Network table)
 	networkvlan = sqlalchemy.orm.aliased(Network)
-	devices = s.query(Network.device, networkvlan.vlanID).filter(
+	devices = s.query(Network.device, networkvlan.vlanID, Network.options, Network.module).filter(
 			Network.node == node.vm_defs.physNode,
 			networkvlan.node == node.vm_defs.physNode,
 			Network.subnet_ID == networkvlan.subnet_ID,
@@ -68,7 +69,8 @@ def getPhysTapDevicefromVnode(self, node):
 def getPhysBridgedDevicefromVnode(self, node):
 	"""Given a virtual node it returns a list of dictionaries with
 	{'device': phys_device_name, "vlanID": phys_device_vlan,
-	"mac": virtual_mac_address} which are needed for this virtual
+	"mac": virtual_mac_address, "options": options of the physical if, "module": module of the physical if
+	} which are needed for this virtual
 	host. This list includes only bridged devices, it does not include
 	tap interfaces"""
 
@@ -79,7 +81,7 @@ def getPhysBridgedDevicefromVnode(self, node):
 	# now find the physical device name corresponding to the subnets
 	# found in the previous query (Network table)
 	networkvirtual = sqlalchemy.orm.aliased(Network)
-	devices = s.query(Network.device, Network.vlanID, networkvirtual.mac).filter(
+	devices = s.query(Network.device, Network.vlanID, networkvirtual.mac, Network.options, Network.module).filter(
 			Network.node == node.vm_defs.physNode,
 			networkvirtual.node == node,
 			Network.subnet_ID == networkvirtual.subnet_ID,

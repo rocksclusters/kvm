@@ -198,6 +198,8 @@ class Command(rocks.commands.stop.host.command):
 					elif(action == 'shutdown'):
 						domU.shutdown()
 						domU.undefine()
+					elif(action == 'reset'):
+						domU.reset(0)
 					elif(action == 'reboot'):
 						domU.reboot(0)
 				except libvirt.libvirtError, m:

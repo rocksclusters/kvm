@@ -138,6 +138,7 @@ class Command(rocks.commands.stop.host.command):
 	<param type='string' name='action'>
 	poweroff will shut down the VM immediately (default)
 	shutdown will send the ACPI shutdown signal to the guest OS
+	reset will poweroff and poweron the VM
 	reboot will send the ACPI reboot signal to the guest OS
 	</param>
 

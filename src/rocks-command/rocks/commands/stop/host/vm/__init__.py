@@ -135,6 +135,14 @@ class Command(rocks.commands.stop.host.command):
 	with rocks stop host vm)
 	</param>
 
+	<param type='string' name='action'>
+	poweroff will shut down the VM immediately (default)
+	shutdown will send the ACPI shutdown signal to the guest OS
+	reset will poweroff and poweron the VM
+	reboot will send the ACPI reboot signal to the guest OS
+	</param>
+
+
 	<arg type='string' name='host' repeat='1'>
 	A list of one or more VM host names.
 	</arg>
@@ -150,8 +158,9 @@ class Command(rocks.commands.stop.host.command):
 		nodes = self.newdb.getNodesfromNames(args,
 				preload = ['vm_defs'])
 
-		(terminate, ) = self.fillParams( [
+		(terminate, action) = self.fillParams( [
 			('terminate', 'n'),
+			('action', 'poweroff'),
 			])
 
 		terminate = self.str2bool(terminate)
@@ -184,8 +193,16 @@ class Command(rocks.commands.stop.host.command):
 
 				try:
 					domU = hipervisor.lookupByName(node.name)
-					domU.destroy()
-					domU.undefine()
+					if(action == 'poweroff'):
+						domU.destroy()
+						domU.undefine()
+					elif(action == 'shutdown'):
+						domU.shutdown()
+						domU.undefine()
+					elif(action == 'reset'):
+						domU.reset(0)
+					elif(action == 'reboot'):
+						domU.reboot(0)
 				except libvirt.libvirtError, m:
 					pass
 

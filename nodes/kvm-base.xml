@@ -20,9 +20,10 @@ All rights reserved. Rocks(tm) v4.3 www.rocksclusters.org
 <package>bridge-utils</package>
 <package>qemu-kvm</package>
 <package>libvirt</package>
+<package>libvirt-python</package>
 
 
-<!-- no necessary but usefull  -->
+<!-- no necessary but useful  -->
 <!-- guestfish is broken in RHEL 6.3-->
 <package>guestfish</package>
 <!-- losetup is in util-linux-ng -->

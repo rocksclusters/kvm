@@ -25,7 +25,7 @@ All rights reserved. Rocks(tm) v4.3 www.rocksclusters.org
 
 <!-- no necessary but useful  -->
 <!-- guestfish is broken in RHEL 6.3-->
-<package>guestfish</package>
+<package cond="rocks_version_major == 6">guestfish</package>
 <!-- losetup is in util-linux-ng -->
 <package>util-linux-ng</package>
 <package>qemu-kvm-tools</package>

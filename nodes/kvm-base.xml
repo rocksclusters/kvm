@@ -30,7 +30,7 @@ All rights reserved. Rocks(tm) v4.3 www.rocksclusters.org
 <package>util-linux-ng</package>
 <package>qemu-kvm-tools</package>
 <package>virt-manager</package>
-<package>virt-p2v</package>
+<package cond="rocks_version_major == 6">virt-p2v</package>
 <package>virt-top</package>
 <package>virt-v2v</package>
 

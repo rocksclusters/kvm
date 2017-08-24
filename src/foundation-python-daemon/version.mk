@@ -4,5 +4,6 @@ RELEASE            = 1
 TARBALL_POSTFIX    = tar.gz
 
 SRC_SUBDIR         = python-daemon
+RPM.FILES	   = $(PY.ROCKS)/*
 
 

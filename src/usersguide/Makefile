@@ -56,7 +56,6 @@
 #
 #
 
-PKGROOT         = /var/www/html/roll-documentation/kvm/$(VERSION)
 REDHAT.ROOT     = $(PWD)/../../
 
 

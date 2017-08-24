@@ -9,3 +9,6 @@ SUMMARY_ARCHITECTURE	= x86_64
 
 ROLL_REQUIRES		= base kernel os
 ROLL_CONFLICTS		= xen
+
+PKGROOT         = /var/www/html/roll-documentation/kvm/$(VERSION)
+RPM.FILES	= $(PKGROOT)/*

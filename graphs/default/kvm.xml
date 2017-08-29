@@ -51,12 +51,20 @@
 		<tail>kvm-base</tail>
 	</order>
 
+	<order head="networking-serve">
+		<tail>kvm-server-networking</tail>
+	</order>
+	<order head="kvm-base">
+		<tail>kvm-server-networking</tail>
+	</order>
+
 
 	<edge from="server">
 		<to>kvm-server</to>
 		<to>kvm-server-db-data</to>
 		<to>kvm-db</to>
 		<to>kvm-base</to>
+		<to>kvm-server-networking</to>
 	</edge>
 
 	<edge from="client" cond="kvm">

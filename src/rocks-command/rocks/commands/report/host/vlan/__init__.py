@@ -65,8 +65,12 @@ from rocks.db.mappings.kvm import *
 import rocks.db.mappings.kvm
 import rocks.db.vmextend
 import rocks.commands
+import rocks
 
 networking_file = '/etc/libvirt/networking/vlan.conf'
+if rocks.version_major == '7':
+	networking_file = '/etc/libvirt/qemu/networks/vlan.conf'
+	
 
 class Command(rocks.commands.HostArgumentProcessor,
         rocks.commands.report.command):
@@ -104,9 +108,9 @@ class Command(rocks.commands.HostArgumentProcessor,
 				ret += "ip link show %s.%s > /dev/null 2>&1 ||" % \
 						(device, vlanid)
 
-				ret += "vconfig add %s %s && ifconfig %s.%s up &&" \
+				ret += "ip link add link %s name %s.%s type vlan id %s && ip link set %s up && ip link set %s.%s up &&" \
 					" ip link set arp off dev %s.%s;" % \
-					(device, vlanid, device, vlanid, device, vlanid)
+					(device, device, vlanid, vlanid, device, device, vlanid, device, vlanid)
 
 				self.vlanProcessed.add((physhost, device, vlanid))
 		if not ret:

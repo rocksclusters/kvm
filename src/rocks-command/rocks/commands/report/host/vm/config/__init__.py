@@ -223,12 +223,14 @@ class Command(rocks.commands.report.host.command):
 			cpu_match_split = cpu_mode.split(':', 1)
 			if len(cpu_match_split) > 1:
 				# cpu mode contains inner tag of cpus
-				xmlconfig.append("  <cpu mode='" + cpu_match_split[0] + "'>")
+				xmlconfig.append("  <cpu>")
+				xmlconfig.append("   <mode>" + cpu_match_split[0] + "</mode>")
 				xmlconfig.append( cpu_match_split[1] )
 				xmlconfig.append("  </cpu>")
 			else:
-				xmlconfig.append("  <cpu mode='" +
-						cpu_mode + "'/>")
+				xmlconfig.append("  <cpu>")
+				xmlconfig.append("   <mode>" + cpu_mode + "</mode>")
+				xmlconfig.append("  </cpu>")
 
 		# for cpu pinning
 		attribute = self.newdb.getHostAttr(node, 'kvm_cpu_pinning')

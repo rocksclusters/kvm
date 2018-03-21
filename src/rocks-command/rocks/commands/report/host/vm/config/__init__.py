@@ -258,7 +258,7 @@ class Command(rocks.commands.report.host.command):
 
 		returnxml = []
 		returnxml.append("  <os>")
-		returnxml.append("    <type>hvm</type>")
+		returnxml.append("    <type arch='x86_64' machine='pc'>hvm</type>")
 
                 #let's check out the boot action
 		if not node.boot:

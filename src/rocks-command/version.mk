@@ -1,5 +1,5 @@
 NAME	= rocks-command-kvm
-RELEASE	= 3
+RELEASE	= 4
 RPM.FILES =\
 /opt/rocks/bin/* \\n\
 $(PY.ROCKS)/rocks/commands/add/cluster \\n\
